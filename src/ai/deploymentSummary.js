@@ -35,30 +35,48 @@ export const deploymentSummary = {
 
       const prompt = `You are analyzing deployment updates from an external development team and internal team progress.
 
-**External Deployment Team Messages (last 4 hours from C08UM4WCYAZ):**
+EXTERNAL DEPLOYMENT TEAM MESSAGES (last 4 hours from C08UM4WCYAZ):
 ${externalText}
 
-**Internal Team EOD Updates (recent):**
+INTERNAL TEAM EOD UPDATES (recent):
 ${eodText}
 
-**Internal Team Check-ins (today):**
+INTERNAL TEAM CHECK-INS (today):
 ${checkinText}
 
-Analyze and provide a comprehensive summary with:
-1. **External Team Activity**: What the external deployment team has been working on, deployed, or encountered
-2. **Internal Team Status**: What the internal team has been working on based on EOD updates and check-ins
-3. **Pending Items/Gaps**: Identify any pending work, blockers, or items that need attention
-4. **Action Items for Eric and Pavan**: Specific things they need to review or address in the external channel
-5. **Urgency Flags**: Highlight any urgent or blocking issues with ⚠️
+IMPORTANT: Summarize EVERY message from the external team. Do not skip any messages. Include all details, issues, and updates mentioned.
 
-Format the response in clear sections with bullet points. Be specific and actionable.`;
+Provide a comprehensive summary with these sections:
+
+1. EXTERNAL TEAM ACTIVITY
+List what the external deployment team has been working on, deployed, or encountered. Include ALL messages and their details.
+
+2. INTERNAL TEAM STATUS
+What the internal team has been working on based on EOD updates and check-ins.
+
+3. PENDING ITEMS AND GAPS
+Identify any pending work, blockers, or items that need attention.
+
+4. ACTION ITEMS FOR ERIC AND PAVAN
+Specific things they need to review or address in the external channel.
+
+5. URGENCY FLAGS
+Highlight any urgent or blocking issues.
+
+FORMATTING RULES:
+- Use plain text with simple line breaks
+- Use "•" for bullet points (not dashes or asterisks)
+- Use CAPS for section headers (not markdown headers)
+- Do NOT use asterisks, hashtags, or markdown formatting
+- Use emoji for urgency: ⚠️ for warnings, 🚨 for critical
+- Be specific and include all details from every message`;
 
       const response = await openai.chat.completions.create({
         model: config.openai.model,
         messages: [
           {
             role: 'system',
-            content: 'You are a technical project manager analyzing deployment status and team progress. Be concise, specific, and actionable.',
+            content: 'You are a technical project manager analyzing deployment status and team progress. Be concise, specific, and actionable. Use plain text formatting only - NO markdown, NO asterisks, NO hashtags. Use simple line breaks and bullet points (•) only.',
           },
           {
             role: 'user',
@@ -132,14 +150,18 @@ Format as JSON:
   },
 
   formatPurposeSummary(summary, externalChannelId) {
-    // Clean up markdown formatting for Slack
+    // Clean up all markdown formatting for Slack
     const cleanSummary = summary
       .replace(/\*\*/g, '') // Remove bold markdown
       .replace(/\*/g, '') // Remove italic markdown
       .replace(/^- /gm, '• ') // Replace dashes with bullets
       .replace(/^### /gm, '') // Remove heading markers
       .replace(/^## /gm, '') // Remove heading markers
-      .replace(/^# /gm, ''); // Remove heading markers
+      .replace(/^# /gm, '') // Remove heading markers
+      .replace(/#{1,6}\s/g, '') // Remove any remaining hashtag headers
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove markdown links, keep text
+      .replace(/`([^`]+)`/g, '$1') // Remove inline code formatting
+      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1'); // Remove underline formatting
 
     return `🚀 *External Deployment Team Update* (<#${externalChannelId}>)
 
