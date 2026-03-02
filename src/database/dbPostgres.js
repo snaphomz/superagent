@@ -5,7 +5,20 @@ async function initializeDatabase() {
     throw new Error('PostgreSQL pool not initialized');
   }
 
-  const client = await pool.connect();
+  let retries = 5;
+  let client;
+  
+  while (retries > 0) {
+    try {
+      client = await pool.connect();
+      break;
+    } catch (err) {
+      retries--;
+      console.log(`Database connection attempt failed. Retries left: ${retries}`);
+      if (retries === 0) throw err;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
   
   try {
     await client.query(`

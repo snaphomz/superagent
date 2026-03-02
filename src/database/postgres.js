@@ -14,7 +14,9 @@ if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres:
     ssl: isProduction ? { rejectUnauthorized: false } : false,
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
+    statement_timeout: 10000,
+    query_timeout: 10000,
   });
 
   pool.on('error', (err) => {
