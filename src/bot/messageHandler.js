@@ -13,6 +13,18 @@ export const messageHandler = {
         return;
       }
 
+      // Skip messages without user_id (bot messages, system messages, etc.)
+      if (!message.user) {
+        return;
+      }
+
+      // Check for manual OBI summary trigger first (before saving)
+      if (message.text && message.text.trim().toLowerCase() === '!obi summary') {
+        console.log('🧪 Manual OBI summary trigger detected');
+        await obiTeamMonitor.handleMessage(message, client);
+        return;
+      }
+
       if (message.user === config.target.userId) {
         message.is_user_message = true;
       }
