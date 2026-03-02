@@ -11,7 +11,7 @@ let pool;
 if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
   pool = new Pool({
     connectionString: databaseUrl,
-    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    ssl: { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
