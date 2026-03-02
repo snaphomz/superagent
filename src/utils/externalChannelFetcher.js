@@ -56,13 +56,13 @@ export const externalChannelFetcher = {
       const eodUpdates = allMessages
         .filter(msg => {
           const msgTime = new Date(msg.timestamp * 1000);
-          return msgTime >= lookbackTime && eodDetector.isEODUpdate(msg.text);
+          return msgTime >= lookbackTime && eodDetector.isEndOfDayUpdate(msg.text);
         })
         .map(msg => ({
           user: msg.user_id,
           text: msg.text,
           timestamp: new Date(msg.timestamp * 1000).toISOString(),
-          components: eodDetector.extractEODComponents(msg.text),
+          components: eodDetector.extractUpdateComponents(msg.text),
         }));
 
       console.log(`✅ Found ${eodUpdates.length} EOD updates`);

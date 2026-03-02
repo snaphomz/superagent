@@ -17,11 +17,11 @@ export const eodSummary = {
       const userId = message.user;
 
       // Check if this is an EOD update
-      const isEOD = eodDetector.isEODUpdate(message.text);
+      const isEOD = eodDetector.isEndOfDayUpdate(message.text);
       if (!isEOD) return;
 
       // Extract EOD components
-      const eodData = eodDetector.extractEODComponents(message.text);
+      const eodData = eodDetector.extractUpdateComponents(message.text);
 
       // Update checkin record
       const checkin = await messageStore.getCheckinByDate(today, userId);
