@@ -270,5 +270,3 @@ export const messageStorePostgres = {
     return result.rows;
   },
 };
-
-export { messageStorePostgres };
