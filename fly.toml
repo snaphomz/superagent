@@ -1,7 +1,7 @@
 # fly.toml app configuration file
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 
-app = "superagent"
+app = "superagent-bot"
 primary_region = "sjc"
 
 [build]
