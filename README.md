@@ -1,4 +1,4 @@
-# Slack Personality Bot
+# Super Agent
 
 A Slack bot that learns your communication style and automatically responds to team messages in your voice.
 
