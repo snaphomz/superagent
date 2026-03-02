@@ -124,6 +124,24 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_checkins_user ON daily_checkins(user_id)
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS obi_team_requests (
+        id SERIAL PRIMARY KEY,
+        request_type TEXT NOT NULL,
+        message_ts TEXT NOT NULL,
+        message_text TEXT,
+        summary_posted_at TIMESTAMP,
+        summary_message_ts TEXT,
+        eric_responded_at TIMESTAMP,
+        pavan_responded_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_obi_requests_ts ON obi_team_requests(message_ts)
+    `);
+
     console.log('PostgreSQL database initialized successfully');
   } finally {
     client.release();

@@ -36,4 +36,11 @@ export const config = {
     ericUserId: process.env.ERIC_USER_ID,
     pavanUserId: process.env.PAVAN_USER_ID,
   },
+  obiTeam: {
+    userId: process.env.OBI_TEAM_USER_ID || 'U08UA1N1FD5',
+    externalChannelId: process.env.EXTERNAL_CHANNEL_ID || 'C08UM4WCYAZ',
+    lookbackHours: parseInt(process.env.OBI_LOOKBACK_HOURS || '4'),
+    ericUserId: process.env.ERIC_USER_ID || 'U09034VD8QG',
+    pavanUserId: process.env.PAVAN_USER_ID || 'U09QRQLTBPT',
+  },
 };

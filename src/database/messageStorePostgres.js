@@ -269,4 +269,60 @@ export const messageStorePostgres = {
     );
     return result.rows;
   },
+
+  // OBI Team request tracking methods
+  async createObiRequest(requestType, messageTs, messageText) {
+    const result = await db.query(
+      `INSERT INTO obi_team_requests (request_type, message_ts, message_text)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [requestType, messageTs, messageText]
+    );
+    return result.rows[0].id;
+  },
+
+  async updateObiRequestSummary(requestId, summaryMessageTs) {
+    await db.query(
+      `UPDATE obi_team_requests 
+       SET summary_posted_at = CURRENT_TIMESTAMP, summary_message_ts = $2
+       WHERE id = $1`,
+      [requestId, summaryMessageTs]
+    );
+  },
+
+  async trackObiResponse(requestId, userId, responseType) {
+    const column = responseType === 'eric' ? 'eric_responded_at' : 'pavan_responded_at';
+    await db.query(
+      `UPDATE obi_team_requests 
+       SET ${column} = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [requestId]
+    );
+  },
+
+  async getObiRequestByMessageTs(messageTs) {
+    const result = await db.query(
+      `SELECT * FROM obi_team_requests WHERE message_ts = $1`,
+      [messageTs]
+    );
+    return result.rows[0] || null;
+  },
+
+  async getObiRequestBySummaryTs(summaryTs) {
+    const result = await db.query(
+      `SELECT * FROM obi_team_requests WHERE summary_message_ts = $1`,
+      [summaryTs]
+    );
+    return result.rows[0] || null;
+  },
+
+  async getPendingObiResponses() {
+    const result = await db.query(
+      `SELECT * FROM obi_team_requests 
+       WHERE (eric_responded_at IS NULL OR pavan_responded_at IS NULL)
+       AND summary_posted_at IS NOT NULL
+       ORDER BY created_at DESC`
+    );
+    return result.rows;
+  },
 };

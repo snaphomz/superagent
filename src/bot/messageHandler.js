@@ -4,6 +4,7 @@ import { contextBuilder } from '../utils/contextBuilder.js';
 import { config } from '../config/slack.js';
 import { eodSummary } from '../scheduler/eodSummary.js';
 import { codePushReminder } from '../scheduler/codePushReminder.js';
+import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -26,6 +27,17 @@ export const messageHandler = {
       const codePushTs = codePushReminder.getCodePushMessageTs();
       if (codePushTs && message.thread_ts === codePushTs) {
         await codePushReminder.trackAcknowledgment(message.user, message.ts);
+      }
+
+      // Handle OBI Team messages
+      if (message.user === config.obiTeam.userId) {
+        await obiTeamMonitor.handleMessage(message, client);
+        return;
+      }
+
+      // Track Eric/Pavan responses to OBI Team requests
+      if (message.thread_ts) {
+        await obiTeamMonitor.trackResponse(message, client);
       }
 
       if (message.user === config.target.userId) {
