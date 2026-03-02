@@ -24,4 +24,16 @@ export const config = {
   database: {
     path: process.env.DB_PATH || './data/messages.db',
   },
+  scheduler: {
+    morningCheckinTime: process.env.MORNING_CHECKIN_TIME || '09:00',
+    validationTime: process.env.CHECKIN_VALIDATION_TIME || '10:00',
+    codePushTime: process.env.CODE_PUSH_REMINDER_TIME || '17:30',
+    timezone: process.env.CHECKIN_TIMEZONE || 'Asia/Kolkata',
+    maxPingAttempts: parseInt(process.env.MAX_PING_ATTEMPTS || '3'),
+    pingInterval: parseInt(process.env.PING_INTERVAL_MINUTES || '30'),
+    programManagerId: process.env.PROGRAM_MANAGER_USER_ID,
+    freelancerIds: (process.env.FREELANCER_USER_IDS || '').split(',').filter(Boolean),
+    ericUserId: process.env.ERIC_USER_ID,
+    pavanUserId: process.env.PAVAN_USER_ID,
+  },
 };

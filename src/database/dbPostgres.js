@@ -41,7 +41,10 @@ async function initializeDatabase() {
         real_name TEXT,
         display_name TEXT,
         message_count INTEGER DEFAULT 0,
-        last_seen TIMESTAMP
+        last_seen TIMESTAMP,
+        role TEXT DEFAULT 'member',
+        exempt_from_checkins INTEGER DEFAULT 0,
+        exempt_from_eod INTEGER DEFAULT 0
       )
     `);
 
@@ -74,6 +77,34 @@ async function initializeDatabase() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS daily_checkins (
+        id SERIAL PRIMARY KEY,
+        date DATE NOT NULL,
+        user_id TEXT NOT NULL,
+        morning_message_ts TEXT,
+        morning_response_at TIMESTAMP,
+        morning_response_text TEXT,
+        planning_done INTEGER DEFAULT 0,
+        planning_details TEXT,
+        discussed_with_lead INTEGER DEFAULT 0,
+        lead_name TEXT,
+        reddit_engaged INTEGER DEFAULT 0,
+        reddit_details TEXT,
+        tasks_finalized INTEGER DEFAULT 0,
+        task_details TEXT,
+        response_complete INTEGER DEFAULT 0,
+        response_specific INTEGER DEFAULT 0,
+        ping_count INTEGER DEFAULT 0,
+        last_ping_at TIMESTAMP,
+        code_push_reminder_sent_at TIMESTAMP,
+        code_push_acknowledged_at TIMESTAMP,
+        eod_update_received_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(date, user_id)
+      )
+    `);
+
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id)
     `);
 
@@ -83,6 +114,14 @@ async function initializeDatabase() {
 
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_checkins_date ON daily_checkins(date)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_checkins_user ON daily_checkins(user_id)
     `);
 
     console.log('PostgreSQL database initialized successfully');

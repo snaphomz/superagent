@@ -166,13 +166,109 @@ export const messageStorePostgres = {
   },
 
   async getResponseLogs(limit = 50) {
-    const query = `
-      SELECT * FROM response_log 
-      ORDER BY created_at DESC 
-      LIMIT $1
-    `;
-    
-    const result = await db.query(query, [limit]);
+    const result = await db.query(
+      `SELECT * FROM response_log 
+       ORDER BY created_at DESC 
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  },
+
+  // Daily check-in methods
+  async saveCheckin(checkinData) {
+    const {
+      date, userId, morningMessageTs, morningResponseAt, morningResponseText,
+      planningDone, planningDetails, discussedWithLead, leadName,
+      redditEngaged, redditDetails, tasksFinalized, taskDetails,
+      responseComplete, responseSpecific, pingCount, lastPingAt,
+      codePushReminderSentAt, codePushAcknowledgedAt, eodUpdateReceivedAt
+    } = checkinData;
+
+    await db.query(
+      `INSERT INTO daily_checkins 
+       (date, user_id, morning_message_ts, morning_response_at, morning_response_text,
+        planning_done, planning_details, discussed_with_lead, lead_name,
+        reddit_engaged, reddit_details, tasks_finalized, task_details,
+        response_complete, response_specific, ping_count, last_ping_at,
+        code_push_reminder_sent_at, code_push_acknowledged_at, eod_update_received_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+       ON CONFLICT (date, user_id) 
+       DO UPDATE SET
+         morning_message_ts = COALESCE(EXCLUDED.morning_message_ts, daily_checkins.morning_message_ts),
+         morning_response_at = COALESCE(EXCLUDED.morning_response_at, daily_checkins.morning_response_at),
+         morning_response_text = COALESCE(EXCLUDED.morning_response_text, daily_checkins.morning_response_text),
+         planning_done = COALESCE(EXCLUDED.planning_done, daily_checkins.planning_done),
+         planning_details = COALESCE(EXCLUDED.planning_details, daily_checkins.planning_details),
+         discussed_with_lead = COALESCE(EXCLUDED.discussed_with_lead, daily_checkins.discussed_with_lead),
+         lead_name = COALESCE(EXCLUDED.lead_name, daily_checkins.lead_name),
+         reddit_engaged = COALESCE(EXCLUDED.reddit_engaged, daily_checkins.reddit_engaged),
+         reddit_details = COALESCE(EXCLUDED.reddit_details, daily_checkins.reddit_details),
+         tasks_finalized = COALESCE(EXCLUDED.tasks_finalized, daily_checkins.tasks_finalized),
+         task_details = COALESCE(EXCLUDED.task_details, daily_checkins.task_details),
+         response_complete = COALESCE(EXCLUDED.response_complete, daily_checkins.response_complete),
+         response_specific = COALESCE(EXCLUDED.response_specific, daily_checkins.response_specific),
+         ping_count = COALESCE(EXCLUDED.ping_count, daily_checkins.ping_count),
+         last_ping_at = COALESCE(EXCLUDED.last_ping_at, daily_checkins.last_ping_at),
+         code_push_reminder_sent_at = COALESCE(EXCLUDED.code_push_reminder_sent_at, daily_checkins.code_push_reminder_sent_at),
+         code_push_acknowledged_at = COALESCE(EXCLUDED.code_push_acknowledged_at, daily_checkins.code_push_acknowledged_at),
+         eod_update_received_at = COALESCE(EXCLUDED.eod_update_received_at, daily_checkins.eod_update_received_at)`,
+      [date, userId, morningMessageTs, morningResponseAt, morningResponseText,
+       planningDone ? 1 : 0, planningDetails, discussedWithLead ? 1 : 0, leadName,
+       redditEngaged ? 1 : 0, redditDetails, tasksFinalized ? 1 : 0, taskDetails,
+       responseComplete ? 1 : 0, responseSpecific ? 1 : 0, pingCount || 0, lastPingAt,
+       codePushReminderSentAt, codePushAcknowledgedAt, eodUpdateReceivedAt]
+    );
+  },
+
+  async getCheckinByDate(date, userId) {
+    const result = await db.query(
+      `SELECT * FROM daily_checkins WHERE date = $1 AND user_id = $2`,
+      [date, userId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async getTodayCheckins(date) {
+    const result = await db.query(
+      `SELECT * FROM daily_checkins WHERE date = $1`,
+      [date]
+    );
+    return result.rows;
+  },
+
+  async updateCheckinPing(date, userId, pingCount, lastPingAt) {
+    await db.query(
+      `UPDATE daily_checkins 
+       SET ping_count = $3, last_ping_at = $4
+       WHERE date = $1 AND user_id = $2`,
+      [date, userId, pingCount, lastPingAt]
+    );
+  },
+
+  async updateTeamMemberRole(userId, role, exemptFromCheckins, exemptFromEod) {
+    await db.query(
+      `UPDATE team_members 
+       SET role = $2, exempt_from_checkins = $3, exempt_from_eod = $4
+       WHERE user_id = $1`,
+      [userId, role, exemptFromCheckins ? 1 : 0, exemptFromEod ? 1 : 0]
+    );
+  },
+
+  async getTeamMembersByRole(role) {
+    const result = await db.query(
+      `SELECT * FROM team_members WHERE role = $1`,
+      [role]
+    );
+    return result.rows;
+  },
+
+  async getNonExemptMembers() {
+    const result = await db.query(
+      `SELECT * FROM team_members WHERE exempt_from_checkins = 0`
+    );
     return result.rows;
   },
 };
+
+export { messageStorePostgres };

@@ -2,6 +2,10 @@ import { createSlackBot } from './bot/slackBot.js';
 import { personalityAnalyzer } from './ai/personalityAnalyzer.js';
 import { config } from './config/slack.js';
 import db from './database/db.js';
+import { dailyCheckin } from './scheduler/dailyCheckin.js';
+import { checkinValidator } from './scheduler/checkinValidator.js';
+import { codePushReminder } from './scheduler/codePushReminder.js';
+import { eodSummary } from './scheduler/eodSummary.js';
 
 async function main() {
   console.log('🚀 Starting Slack Personality Bot...\n');
@@ -30,6 +34,16 @@ async function main() {
   console.log(`👀 Monitoring channel ${config.target.channelId} for messages...`);
   console.log(`💬 Auto-sending responses with >${config.bot.autoSendThreshold}% confidence`);
   console.log(`📨 Low-confidence responses will be sent to you for review\n`);
+
+  // Initialize schedulers
+  console.log('📅 Initializing daily check-in schedulers...');
+  const client = app.client;
+  dailyCheckin.initialize(client);
+  checkinValidator.initialize(client);
+  codePushReminder.initialize(client);
+  eodSummary.initialize(client);
+  console.log('✅ Schedulers initialized\n');
+
   console.log('Press Ctrl+C to stop\n');
 }
 
@@ -40,6 +54,13 @@ main().catch((error) => {
 
 process.on('SIGINT', () => {
   console.log('\n\n👋 Shutting down bot...');
+  
+  // Stop schedulers
+  dailyCheckin.stop();
+  checkinValidator.stop();
+  codePushReminder.stop();
+  console.log('✅ Schedulers stopped');
+  
   db.close((err) => {
     if (err) {
       console.error('Error closing database:', err);

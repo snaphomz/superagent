@@ -2,6 +2,8 @@ import { messageStore } from '../database/messageStore.js';
 import { responseGenerator } from '../ai/responseGenerator.js';
 import { contextBuilder } from '../utils/contextBuilder.js';
 import { config } from '../config/slack.js';
+import { eodSummary } from '../scheduler/eodSummary.js';
+import { codePushReminder } from '../scheduler/codePushReminder.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -16,6 +18,15 @@ export const messageHandler = {
 
       await messageStore.saveMessage(message);
       console.log(`Saved message from ${message.user}: ${message.text?.substring(0, 50)}...`);
+
+      // Track EOD updates for summary
+      await eodSummary.trackEODUpdate(message);
+
+      // Track code push acknowledgments
+      const codePushTs = codePushReminder.getCodePushMessageTs();
+      if (codePushTs && message.thread_ts === codePushTs) {
+        await codePushReminder.trackAcknowledgment(message.user, message.ts);
+      }
 
       if (message.user === config.target.userId) {
         return;
