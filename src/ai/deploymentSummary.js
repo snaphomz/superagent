@@ -132,9 +132,18 @@ Format as JSON:
   },
 
   formatPurposeSummary(summary, externalChannelId) {
-    return `🚀 **External Deployment Team Update** (<#${externalChannelId}>)
+    // Clean up markdown formatting for Slack
+    const cleanSummary = summary
+      .replace(/\*\*/g, '') // Remove bold markdown
+      .replace(/\*/g, '') // Remove italic markdown
+      .replace(/^- /gm, '• ') // Replace dashes with bullets
+      .replace(/^### /gm, '') // Remove heading markers
+      .replace(/^## /gm, '') // Remove heading markers
+      .replace(/^# /gm, ''); // Remove heading markers
 
-${summary}
+    return `🚀 *External Deployment Team Update* (<#${externalChannelId}>)
+
+${cleanSummary}
 
 📊 Full details available in <#${externalChannelId}>`;
   },

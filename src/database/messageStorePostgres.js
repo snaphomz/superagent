@@ -48,6 +48,17 @@ export const messageStorePostgres = {
     return result.rows;
   },
 
+  async getMessages(limit = 500) {
+    const query = `
+      SELECT * FROM messages 
+      ORDER BY timestamp DESC 
+      LIMIT $1
+    `;
+    
+    const result = await db.query(query, [limit]);
+    return result.rows;
+  },
+
   async getContextMessages(channelId, beforeTimestamp, limit = 20) {
     const query = `
       SELECT * FROM messages 
