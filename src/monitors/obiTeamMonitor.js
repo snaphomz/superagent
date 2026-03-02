@@ -6,6 +6,13 @@ import { deploymentSummary } from '../ai/deploymentSummary.js';
 export const obiTeamMonitor = {
   async handleMessage(message, client) {
     try {
+      // Check for manual trigger command (from any user for testing)
+      if (message.text && message.text.trim().toLowerCase() === '!obi summary') {
+        console.log('🧪 Manual OBI summary trigger detected');
+        await this.handlePurposeSummary(message, client);
+        return;
+      }
+
       // Only process messages from OBI Team user
       if (message.user !== config.obiTeam.userId) {
         return;
