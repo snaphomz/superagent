@@ -166,6 +166,29 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_obi_requests_ts ON obi_team_requests(message_ts)
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS eod_updates (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        summary TEXT,
+        action_items TEXT,
+        blockers TEXT,
+        timestamp TIMESTAMP NOT NULL,
+        message_ts TEXT,
+        thread_ts TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, DATE(timestamp))
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_eod_user_date ON eod_updates(user_id, DATE(timestamp))
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_eod_timestamp ON eod_updates(timestamp)
+    `);
+
     console.log('PostgreSQL database initialized successfully');
   } finally {
     client.release();
