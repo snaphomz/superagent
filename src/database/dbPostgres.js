@@ -177,12 +177,12 @@ async function initializeDatabase() {
         message_ts TEXT,
         thread_ts TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, DATE(timestamp))
+        UNIQUE(user_id, CAST(timestamp AS DATE))
       )
     `);
 
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_eod_user_date ON eod_updates(user_id, DATE(timestamp))
+      CREATE INDEX IF NOT EXISTS idx_eod_user_date ON eod_updates(user_id, CAST(timestamp AS DATE))
     `);
 
     await client.query(`
