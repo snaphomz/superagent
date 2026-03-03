@@ -100,10 +100,6 @@ export const messageHandler = {
         await obiTeamMonitor.trackResponse(message, client);
       }
 
-      if (message.user === config.target.userId) {
-        return;
-      }
-
       if (message.bot_id || message.subtype === 'bot_message') {
         return;
       }
@@ -145,6 +141,11 @@ export const messageHandler = {
       const messageType = contextBuilder.detectMessageType(message.text);
       const isEODUpdate = messageType === 'eod_update';
       const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId) || isQuestionInThread;
+      
+      // Skip Antony's messages unless they're questions in bot threads
+      if (message.user === config.target.userId && !isQuestionInThread) {
+        return;
+      }
       
       // Check if message is a simple acknowledgment (e.g., "ok @Antony", "Ok @Antony")
       const isSimpleAck = message.text && /^(ok|okay|sure|got it|noted|understood)\s*(@\w+)?$/i.test(message.text.trim());
