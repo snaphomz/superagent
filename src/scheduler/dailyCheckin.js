@@ -4,11 +4,16 @@ import { messageStore } from '../database/messageStore.js';
 
 let morningCheckinJob = null;
 let slackClient = null;
+let morningCheckinMessageTs = null;
 
 export const dailyCheckin = {
   initialize(client) {
     slackClient = client;
     this.scheduleCheckin();
+  },
+
+  getMorningCheckinTs() {
+    return morningCheckinMessageTs;
   },
 
   scheduleCheckin() {
@@ -53,6 +58,7 @@ Time for your daily planning check-in. Please reply in thread with specific deta
       });
 
       // Store the message timestamp for thread tracking
+      morningCheckinMessageTs = result.ts;
       const today = new Date().toISOString().split('T')[0];
       
       // Get all team members who should respond (non-freelancers and non-excluded)

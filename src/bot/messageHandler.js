@@ -7,6 +7,7 @@ import { codePushReminder } from '../scheduler/codePushReminder.js';
 import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { hydrationReminder } from '../scheduler/hydrationReminder.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
+import { dailyCheckin } from '../scheduler/dailyCheckin.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -52,6 +53,39 @@ export const messageHandler = {
 
       // Track EOD updates for summary
       await eodSummary.trackEODUpdate(message);
+
+      // Track morning check-in responses
+      const morningCheckinTs = dailyCheckin.getMorningCheckinTs();
+      if (morningCheckinTs && message.thread_ts === morningCheckinTs) {
+        const today = new Date().toISOString().split('T')[0];
+        const checkin = await messageStore.getCheckinByDate(today, message.user);
+        
+        if (checkin && !checkin.morning_response_at) {
+          await messageStore.saveCheckin({
+            date: today,
+            userId: message.user,
+            morningMessageTs: morningCheckinTs,
+            morningResponseAt: new Date(parseFloat(message.ts) * 1000).toISOString(),
+            morningResponseText: message.text,
+            planningDone: checkin.planning_done,
+            planningDetails: checkin.planning_details,
+            discussedWithLead: checkin.discussed_with_lead,
+            leadName: checkin.lead_name,
+            redditEngaged: checkin.reddit_engaged,
+            redditDetails: checkin.reddit_details,
+            tasksFinalized: checkin.tasks_finalized,
+            taskDetails: checkin.task_details,
+            responseComplete: checkin.response_complete,
+            responseSpecific: checkin.response_specific,
+            pingCount: checkin.ping_count || 0,
+            lastPingAt: checkin.last_ping_at,
+            codePushReminderSentAt: checkin.code_push_reminder_sent_at,
+            codePushAcknowledgedAt: checkin.code_push_acknowledged_at,
+            eodUpdateReceivedAt: checkin.eod_update_received_at,
+          });
+          console.log(`✅ Tracked morning check-in response from ${message.user}`);
+        }
+      }
 
       // Track code push acknowledgments
       const codePushTs = codePushReminder.getCodePushMessageTs();
