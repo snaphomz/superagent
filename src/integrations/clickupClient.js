@@ -15,16 +15,24 @@ export const clickupClient = {
 
   async exchangeCodeForToken(code) {
     try {
-      const response = await axios.post('https://api.clickup.com/api/v2/oauth/token', {
-        client_id: process.env.CLICKUP_CLIENT_ID,
-        client_secret: process.env.CLICKUP_CLIENT_SECRET,
-        code: code
+      const params = new URLSearchParams();
+      params.append('client_id', process.env.CLICKUP_CLIENT_ID);
+      params.append('client_secret', process.env.CLICKUP_CLIENT_SECRET);
+      params.append('code', code);
+
+      const response = await axios.post('https://api.clickup.com/api/v2/oauth/token', params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       });
       
       accessToken = response.data.access_token;
+      console.log('✅ ClickUp access token obtained successfully');
       return response.data;
     } catch (error) {
       console.error('❌ Error exchanging code for token:', error.response?.data || error.message);
+      console.error('Response status:', error.response?.status);
+      console.error('Response headers:', error.response?.headers);
       throw error;
     }
   },

@@ -51,27 +51,40 @@ export const clickupMonitor = {
       const tasks = await clickupClient.getListTasks(configuredListId);
       console.log(`📋 Checking ${tasks.length} tasks from ClickUp list ${configuredListId}`);
 
+      const now = Date.now();
+
       for (const task of tasks) {
         const lastState = lastCheckedTasks.get(task.id);
         
-        // Check for new task
-        if (!lastState) {
-          await this.notifyNewTask(task);
-        }
-        // Check if task status changed
-        else if (lastState.status !== task.status.status) {
-          await this.notifyStatusChange(task, lastState.status);
-        }
-        // Check if assignees changed
-        else if (this.assigneesChanged(lastState.assignees, task.assignees)) {
-          await this.notifyAssigneeChange(task, lastState.assignees);
-        }
+        // Check if task is overdue
+        const isOverdue = task.due_date && parseInt(task.due_date) < now;
+        const isComplete = task.status.status.toLowerCase().includes('complete') || 
+                          task.status.status.toLowerCase().includes('done') ||
+                          task.status.status.toLowerCase().includes('closed');
         
-        // Store current state
-        lastCheckedTasks.set(task.id, {
-          status: task.status.status,
-          assignees: task.assignees.map(a => a.id)
-        });
+        // Only notify about overdue tasks that are not complete
+        if (isOverdue && !isComplete) {
+          // Check if we've already notified about this task being overdue
+          const wasNotified = lastState?.overdueNotified;
+          
+          if (!wasNotified) {
+            await this.notifyOverdueTask(task);
+            
+            // Mark as notified
+            lastCheckedTasks.set(task.id, {
+              status: task.status.status,
+              assignees: task.assignees.map(a => a.id),
+              overdueNotified: true
+            });
+          }
+        } else {
+          // Update state without overdue flag if not overdue
+          lastCheckedTasks.set(task.id, {
+            status: task.status.status,
+            assignees: task.assignees.map(a => a.id),
+            overdueNotified: false
+          });
+        }
       }
     } catch (error) {
       console.error('❌ Error checking ClickUp tasks:', error.message);
@@ -87,11 +100,16 @@ export const clickupMonitor = {
     return !oldIds.every(id => newIds.includes(id));
   },
 
-  async notifyNewTask(task) {
-    const assigneeNames = task.assignees.map(a => a.username).join(', ') || 'Unassigned';
-    const dueDate = task.due_date ? new Date(parseInt(task.due_date)).toLocaleDateString() : 'No due date';
+  async notifyOverdueTask(task) {
+    const dueDate = new Date(parseInt(task.due_date));
+    const dueDateStr = dueDate.toLocaleDateString();
+    const daysOverdue = Math.floor((Date.now() - parseInt(task.due_date)) / (1000 * 60 * 60 * 24));
     
-    const message = `📋 *New Task Created*\n\n*${task.name}*\n• Status: ${task.status.status}\n• Assigned to: ${assigneeNames}\n• Due: ${dueDate}\n• Priority: ${task.priority?.priority || 'None'}\n\n<${task.url}|View in ClickUp>`;
+    // Map ClickUp usernames to Slack user mentions
+    const slackMentions = this.getSlackMentions(task.assignees);
+    const assigneeText = slackMentions.length > 0 ? slackMentions.join(', ') : 'Unassigned';
+    
+    const message = `⚠️ *Overdue Task Alert*\n\n*${task.name}*\n• Assigned to: ${assigneeText}\n• Due date: ${dueDateStr} (${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue)\n• Status: ${task.status.status}\n• Priority: ${task.priority?.priority || 'None'}\n\n${slackMentions.length > 0 ? slackMentions.join(' ') + ' - ' : ''}Please update the due date or add a comment with your progress.\n\n<${task.url}|View in ClickUp>`;
 
     await slackClient.chat.postMessage({
       channel: config.target.channelId,
@@ -107,7 +125,27 @@ export const clickupMonitor = {
       ]
     });
 
-    console.log(`✅ Notified new task: ${task.name}`);
+    console.log(`✅ Notified overdue task: ${task.name} (${daysOverdue} days overdue)`);
+  },
+
+  getSlackMentions(assignees) {
+    // Map ClickUp usernames to Slack user IDs
+    // You can customize this mapping based on your team
+    const userMapping = {
+      'Devarapalli Deepthi': 'U09QAS25E30', // Replace with actual Slack user ID
+      'deepthi': 'U09QAS25E30',
+      // Add more mappings as needed
+    };
+
+    const mentions = [];
+    for (const assignee of assignees) {
+      const slackUserId = userMapping[assignee.username] || userMapping[assignee.username.toLowerCase()];
+      if (slackUserId) {
+        mentions.push(`<@${slackUserId}>`);
+      }
+    }
+    
+    return mentions;
   },
 
   async notifyStatusChange(task, oldStatus) {
