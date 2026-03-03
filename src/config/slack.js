@@ -28,6 +28,7 @@ export const config = {
     morningCheckinTime: process.env.MORNING_CHECKIN_TIME || '09:00',
     validationTime: process.env.CHECKIN_VALIDATION_TIME || '10:00',
     codePushTime: process.env.CODE_PUSH_REMINDER_TIME || '17:30',
+    dailySummaryTime: process.env.DAILY_SUMMARY_TIME || '23:30',
     timezone: process.env.CHECKIN_TIMEZONE || 'Asia/Kolkata',
     maxPingAttempts: parseInt(process.env.MAX_PING_ATTEMPTS || '3'),
     pingInterval: parseInt(process.env.PING_INTERVAL_MINUTES || '30'),

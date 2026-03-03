@@ -4,17 +4,15 @@ import db from '../database/postgres.js';
 // Jibble channel ID
 const JIBBLE_CHANNEL_ID = 'C09GDQ1RX7G';
 
-// Tracked team members
+// Tracked team members (7 total)
 const TRACKED_MEMBERS = [
   'Deepthi D',
   'Pavan B',
-  'Eric J',
   'eric',
   'Vyshnavi',
   'Pranati Manthena',
   'Harish K',
-  'Sai Deepthi Molugari',
-  'Sangita'
+  'Sai Deepthi Molugari'
 ];
 
 export const jibbleMonitor = {
