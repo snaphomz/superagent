@@ -6,12 +6,18 @@ This file documents how to map ClickUp users to Slack users for @mentions in ove
 
 The mapping is defined in `src/monitors/clickupMonitor.js` in the `getSlackMentions` method:
 
-```javascript
-const userMapping = {
-  // Add team member mappings here
-  // Example: 'ClickUp Username': 'SLACK_USER_ID',
-};
-```
+| ClickUp Username | Slack User ID | Team Member |
+|-----------------|---------------|-------------|
+| Devarapalli Deepthi | U09QAS25E30 | Deepthi D |
+| Eric Samuel | U09034VD8QG | Eric J |
+| Harish Kakaraparthi | U09QRQLTBPT | Harish K |
+| Pavan Balla | U09QRQLTBPT | Pavan B |
+| Phani kumar | U09KQK8V7ST | Phani Kumar |
+| Pranati Manthena | U09QAS25E30 | Pranati Manthena |
+| Sai Deepthi Molugari | U09QAS25E30 | Sai Deepthi Molugari |
+| Vyshnavi Devi | U09QAS25E30 | Vyshnavi |
+
+**Note:** The mapping includes both exact case and lowercase versions for case-insensitive matching.
 
 ## How to Add New Mappings
 

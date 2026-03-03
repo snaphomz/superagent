@@ -130,10 +130,23 @@ export const clickupMonitor = {
 
   getSlackMentions(assignees) {
     // Map ClickUp usernames to Slack user IDs
-    // You can customize this mapping based on your team
     const userMapping = {
-      // Add team member mappings here
-      // Example: 'ClickUp Username': 'SLACK_USER_ID',
+      'Devarapalli Deepthi': 'U09QAS25E30',
+      'devarapalli deepthi': 'U09QAS25E30',
+      'Eric Samuel': 'U09034VD8QG',
+      'eric samuel': 'U09034VD8QG',
+      'Harish Kakaraparthi': 'U09QRQLTBPT',
+      'harish kakaraparthi': 'U09QRQLTBPT',
+      'Pavan Balla': 'U09QRQLTBPT',
+      'pavan balla': 'U09QRQLTBPT',
+      'Phani kumar': 'U09KQK8V7ST',
+      'phani kumar': 'U09KQK8V7ST',
+      'Pranati Manthena': 'U09QAS25E30',
+      'pranati manthena': 'U09QAS25E30',
+      'Sai Deepthi Molugari': 'U09QAS25E30',
+      'sai deepthi molugari': 'U09QAS25E30',
+      'Vyshnavi Devi': 'U09QAS25E30',
+      'vyshnavi devi': 'U09QAS25E30',
     };
 
     const mentions = [];
