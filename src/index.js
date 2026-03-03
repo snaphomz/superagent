@@ -8,9 +8,31 @@ import { codePushReminder } from './scheduler/codePushReminder.js';
 import { eodSummary } from './scheduler/eodSummary.js';
 import { hydrationReminder } from './scheduler/hydrationReminder.js';
 import { dailySummary } from './scheduler/dailySummary.js';
+import http from 'http';
 
 async function main() {
   console.log('🚀 Starting Slack Personality Bot...\n');
+
+  // Create HTTP health check server for Fly.io
+  healthCheckServer = http.createServer((req, res) => {
+    if (req.url === '/health' || req.url === '/') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        status: 'healthy', 
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+      }));
+    } else {
+      res.writeHead(404);
+      res.end('Not Found');
+    }
+  });
+
+  const PORT = process.env.PORT || 8080;
+  healthCheckServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Health check server listening on 0.0.0.0:${PORT}`);
+    console.log(`   This keeps Fly.io machines alive 24/7\n`);
+  });
 
   console.log('Configuration:');
   console.log(`  Target Channel: ${config.target.channelId}`);
@@ -56,6 +78,8 @@ main().catch((error) => {
   process.exit(1);
 });
 
+let healthCheckServer;
+
 process.on('SIGINT', () => {
   console.log('\n\n👋 Shutting down bot...');
   
@@ -66,6 +90,13 @@ process.on('SIGINT', () => {
   hydrationReminder.stop();
   dailySummary.stop();
   console.log('✅ Schedulers stopped');
+  
+  // Close health check server
+  if (healthCheckServer) {
+    healthCheckServer.close(() => {
+      console.log('✅ Health check server stopped');
+    });
+  }
   
   db.close((err) => {
     if (err) {
