@@ -8,6 +8,7 @@ import { codePushReminder } from './scheduler/codePushReminder.js';
 import { eodSummary } from './scheduler/eodSummary.js';
 import { hydrationReminder } from './scheduler/hydrationReminder.js';
 import { dailySummary } from './scheduler/dailySummary.js';
+import { strikeEvaluator } from './scheduler/strikeEvaluator.js';
 import http from 'http';
 
 let healthCheckServer;
@@ -117,6 +118,7 @@ async function main() {
   eodSummary.initialize(client);
   hydrationReminder.initialize(client);
   dailySummary.initialize(client);
+  strikeEvaluator.initialize(client);
   console.log('✅ Schedulers initialized\n');
 
   // Initialize ClickUp monitor if configured
@@ -143,6 +145,7 @@ process.on('SIGINT', async () => {
   codePushReminder.stop();
   hydrationReminder.stop();
   dailySummary.stop();
+  strikeEvaluator.stop();
   console.log('✅ Schedulers stopped');
 
   // Stop ClickUp monitor

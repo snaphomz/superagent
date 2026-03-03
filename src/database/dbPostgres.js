@@ -190,6 +190,55 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_eod_timestamp ON eod_updates(timestamp)
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS channel_digests (
+        id SERIAL PRIMARY KEY,
+        channel_id TEXT NOT NULL,
+        digest_date DATE NOT NULL,
+        topics TEXT,
+        decisions TEXT,
+        open_questions TEXT,
+        per_person TEXT,
+        raw_summary TEXT,
+        message_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(channel_id, digest_date)
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_digest_channel_date ON channel_digests(channel_id, digest_date)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS strike_records (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        strike_date DATE NOT NULL,
+        strike_type TEXT NOT NULL,
+        details TEXT,
+        severity INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_strikes_user_date ON strike_records(user_id, strike_date)
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS weekly_strike_summary (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        week_start DATE NOT NULL,
+        total_strikes INTEGER DEFAULT 0,
+        strike_breakdown TEXT,
+        escalated INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, week_start)
+      )
+    `);
+
     console.log('PostgreSQL database initialized successfully');
   } finally {
     client.release();

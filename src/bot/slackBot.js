@@ -4,6 +4,8 @@ import { config } from '../config/slack.js';
 import { messageHandler } from './messageHandler.js';
 import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
+import { strikeEvaluator } from '../scheduler/strikeEvaluator.js';
+import { channelDigest } from '../ai/channelDigest.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -101,6 +103,149 @@ export function createSlackBot() {
         });
         return;
       }
+    }
+
+    // Handle !strikes command — Antony-only, DM response only
+    if (message.text && message.text.trim().toLowerCase().startsWith('!strikes')) {
+      if (message.user !== ANTONY_USER_ID) {
+        // Silently ignore — no response to non-Antony
+        return;
+      }
+
+      try {
+        const parts = message.text.trim().split(/\s+/);
+        const subCmd = parts[1]?.toLowerCase();
+
+        // !strikes test — run evaluation immediately for today
+        if (subCmd === 'test') {
+          await client.chat.postMessage({
+            channel: ANTONY_USER_ID,
+            text: '⚡ Running strike evaluation now... check logs for details.',
+          });
+          strikeEvaluator.initialize(client);
+          const today = new Date().toISOString().split('T')[0];
+          const allStrikes = await strikeEvaluator.evaluateDay(today);
+          const todayStrikes = await strikeEvaluator.getTodayStrikes(today);
+          const weeklyData = await strikeEvaluator.getWeeklyStrikeSummary();
+
+          let report = `⚡ *Strike Evaluation Results — ${today}*\n\n`;
+          if (todayStrikes.length === 0) {
+            report += '✅ No strikes recorded today.\n';
+          } else {
+            const byUser = {};
+            for (const row of todayStrikes) {
+              if (!byUser[row.user_id]) byUser[row.user_id] = { name: row.display_name || row.real_name || row.user_id, strikes: [] };
+              byUser[row.user_id].strikes.push(`${row.strike_type}: ${row.details || ''}`);
+            }
+            for (const { name, strikes } of Object.values(byUser)) {
+              report += `• *${name}*: ${strikes.length} strike${strikes.length > 1 ? 's' : ''}\n`;
+              strikes.forEach(s => { report += `  _${s}_\n`; });
+            }
+          }
+
+          if (weeklyData.length > 0) {
+            report += '\n*Weekly Totals:*\n';
+            for (const row of weeklyData) {
+              const name = row.display_name || row.real_name || row.user_id;
+              const flag = row.escalated ? ' ⚠️ ESCALATED' : '';
+              report += `• ${name}: ${row.total_strikes} strike${row.total_strikes !== 1 ? 's' : ''}${flag}\n`;
+            }
+          }
+
+          await client.chat.postMessage({ channel: ANTONY_USER_ID, text: report });
+          return;
+        }
+
+        // !strikes @user — history for specific user
+        const mentionMatch = message.text.match(/<@([A-Z0-9]+)>/);
+        if (mentionMatch) {
+          const targetUserId = mentionMatch[1];
+          const history = await strikeEvaluator.getUserStrikeHistory(targetUserId, 30);
+          let report = `⚡ *Strike History for <@${targetUserId}> (last 30 days)*\n\n`;
+          if (history.length === 0) {
+            report += '✅ No strikes on record.';
+          } else {
+            for (const row of history) {
+              report += `• ${row.strike_date}: *${row.strike_type}* — ${row.details || ''}\n`;
+            }
+          }
+          await client.chat.postMessage({ channel: ANTONY_USER_ID, text: report });
+          return;
+        }
+
+        // !strikes — weekly leaderboard
+        strikeEvaluator.initialize(client);
+        const weeklyData = await strikeEvaluator.getWeeklyStrikeSummary();
+        let report = `⚡ *Weekly Strike Report*\n\n`;
+        if (weeklyData.length === 0) {
+          report += '✅ No strike data for this week yet.';
+        } else {
+          for (const row of weeklyData) {
+            const name = row.display_name || row.real_name || row.user_id;
+            const breakdown = row.strike_breakdown ? JSON.parse(row.strike_breakdown) : {};
+            const bStr = Object.entries(breakdown).map(([t, c]) => `${t}: ${c}`).join(', ');
+            const flag = row.escalated ? ' ⚠️ *ESCALATED*' : '';
+            report += `• *${name}*: ${row.total_strikes} strike${row.total_strikes !== 1 ? 's' : ''}${flag}`;
+            if (bStr) report += ` _(${bStr})_`;
+            report += '\n';
+          }
+        }
+        await client.chat.postMessage({ channel: ANTONY_USER_ID, text: report });
+      } catch (error) {
+        console.error('Error handling !strikes command:', error);
+        await client.chat.postMessage({
+          channel: ANTONY_USER_ID,
+          text: `❌ Error running strikes report: ${error.message}`,
+        });
+      }
+      return;
+    }
+
+    // Handle !digest command — Antony-only, triggers today's channel digest
+    if (message.text && message.text.trim().toLowerCase() === '!digest') {
+      if (message.user !== ANTONY_USER_ID) {
+        return;
+      }
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        await client.chat.postMessage({
+          channel: ANTONY_USER_ID,
+          text: '📰 Generating channel digests now...',
+        });
+
+        const targetDigest = await channelDigest.generateAndSaveDigest(config.target.channelId, today, client);
+        const obiDigest = await channelDigest.generateAndSaveDigest('C08UM4WCYAZ', today, client);
+
+        let report = `📰 *Channel Digest — ${today}*\n\n`;
+
+        report += `*Target Channel (<#${config.target.channelId}>):*\n`;
+        if (targetDigest) {
+          report += `Summary: ${targetDigest.raw_summary || 'N/A'}\n`;
+          if (targetDigest.topics?.length) report += `Topics: ${targetDigest.topics.join(', ')}\n`;
+          if (targetDigest.open_questions?.length) report += `Open: ${targetDigest.open_questions.join('; ')}\n`;
+        } else {
+          report += '_No messages today_\n';
+        }
+
+        report += `\n*OBI Channel:*\n`;
+        if (obiDigest) {
+          report += `Summary: ${obiDigest.raw_summary || 'N/A'}\n`;
+          if (obiDigest.topics?.length) report += `Topics: ${obiDigest.topics.join(', ')}\n`;
+          if (obiDigest.open_questions?.length) report += `Open: ${obiDigest.open_questions.join('; ')}\n`;
+        } else {
+          report += '_No messages today_\n';
+        }
+
+        await client.chat.postMessage({ channel: ANTONY_USER_ID, text: report });
+      } catch (error) {
+        console.error('Error handling !digest command:', error);
+        await client.chat.postMessage({
+          channel: ANTONY_USER_ID,
+          text: `❌ Error generating digest: ${error.message}`,
+        });
+      }
+      return;
     }
 
     // Handle ClickUp commands

@@ -32,13 +32,30 @@ export const responseGenerator = {
         }
       }
       
+      // Fetch last 5 bot responses in this channel to avoid repetition
+      let recentBotResponses = [];
+      try {
+        const db = await import('../database/postgres.js');
+        const recentResult = await db.default.query(
+          `SELECT generated_response FROM response_log
+           WHERE channel_id = $1 AND auto_sent = 1
+           ORDER BY created_at DESC LIMIT 5`,
+          [message.channel]
+        );
+        recentBotResponses = recentResult.rows.map(r => r.generated_response).filter(Boolean);
+      } catch (err) {
+        console.error('⚠️ Could not fetch recent responses for dedup:', err.message);
+      }
+
       const prompts = await promptBuilder.buildFullPrompt(
         contextString,
         message.text,
         actualMessageType,
         config.target.userId,
         eodContext,
-        userInfo
+        userInfo,
+        message.channel,
+        recentBotResponses
       );
 
       console.log('\n=== Generating Response ===');

@@ -49,7 +49,27 @@ export const messageHandler = {
 
       await messageStore.saveMessage(message);
       console.log(`Saved message from ${message.user}: ${message.text?.substring(0, 50)}...`);
-      
+
+      // Detect file/screenshot shares and save context annotation
+      if (message.files && message.files.length > 0) {
+        for (const file of message.files) {
+          const fileDesc = `[User shared file: ${file.name || 'unnamed'} (${file.filetype || file.mimetype || 'unknown type'})]`;
+          try {
+            await messageStore.saveMessage({
+              ts: `${message.ts}_file_${file.id}`,
+              user: message.user,
+              channel: message.channel,
+              text: fileDesc,
+              thread_ts: message.thread_ts || null,
+              is_user_message: message.user === config.target.userId,
+            });
+            console.log(`📎 Saved file annotation: ${fileDesc}`);
+          } catch (fileErr) {
+            console.error('⚠️ Could not save file annotation:', fileErr.message);
+          }
+        }
+      }
+
       // Track activity for hydration reminder system
       hydrationReminder.recordActivity();
 

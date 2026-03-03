@@ -1,11 +1,28 @@
 import { messageStore } from '../database/messageStore.js';
+import { channelDigest } from './channelDigest.js';
+import { config } from '../config/slack.js';
 
 export const promptBuilder = {
-  async buildSystemPrompt(userId) {
+  async buildSystemPrompt(userId, channelId = null) {
     const profile = await messageStore.getPersonalityProfile();
     
+    let digestContext = '';
+    try {
+      const targetChannelId = channelId || config.target.channelId;
+      const digests = await channelDigest.getRecentDigests(targetChannelId, 3);
+      digestContext = channelDigest.buildContextString(digests);
+      if (digestContext) {
+        console.log(`📰 Injecting ${digests.length} day(s) of channel digest into prompt`);
+      }
+    } catch (err) {
+      console.error('⚠️ Could not load channel digest for prompt:', err.message);
+    }
+
     if (!profile) {
-      return this.getDefaultSystemPrompt();
+      const basePrompt = this.getDefaultSystemPrompt();
+      return digestContext ? `${basePrompt}
+
+${digestContext}` : basePrompt;
     }
 
     const commonPhrases = profile.commonPhrases.slice(0, 10).map(p => p.phrase).join(', ');
@@ -60,7 +77,9 @@ export const promptBuilder = {
 
 ## Response Format
 
-Respond ONLY with the message text. No meta-commentary, explanations, or formatting markers. Just the raw Slack message.`;
+Respond ONLY with the message text. No meta-commentary, explanations, or formatting markers. Just the raw Slack message.
+
+${digestContext ? digestContext : ''}`;
   },
 
   getDefaultSystemPrompt() {
@@ -93,9 +112,31 @@ For questions: Give direct answers, ensure understanding, prevent time waste
 Respond ONLY with the message text. No meta-commentary.`;
   },
 
-  buildUserPrompt(context, currentMessage, messageType, eodContext = null, userInfo = null) {
-    let prompt = `## Recent Conversation Context\n\n${context}\n\n`;
-    prompt += `## New Message to Respond To\n\n${currentMessage}\n\n`;
+  buildUserPrompt(context, currentMessage, messageType, eodContext = null, userInfo = null, recentBotResponses = []) {
+    let prompt = `## Recent Conversation Context
+
+${context}
+
+`;
+    prompt += `## New Message to Respond To
+
+${currentMessage}
+
+`;
+    
+    if (recentBotResponses && recentBotResponses.length > 0) {
+      const dedupList = recentBotResponses
+        .map((r, i) => `${i + 1}. "${r.substring(0, 120)}${r.length > 120 ? '...' : ''}"`)  
+        .join('\n');
+      prompt += `## Points Already Raised (do NOT repeat these)
+
+${dedupList}
+
+Avoid repeating the same questions, reminders, or follow-up points listed above.
+
+`;
+      console.log(`🔁 Deduplication: injecting ${recentBotResponses.length} previous responses to avoid repetition`);
+    }
     
     if (userInfo) {
       const userMention = `<@${userInfo.id}>`;
@@ -143,9 +184,9 @@ Respond ONLY with the message text. No meta-commentary.`;
     return prompt;
   },
 
-  async buildFullPrompt(context, currentMessage, messageType, userId, eodContext = null, userInfo = null) {
-    const systemPrompt = await this.buildSystemPrompt(userId);
-    const userPrompt = this.buildUserPrompt(context, currentMessage, messageType, eodContext, userInfo);
+  async buildFullPrompt(context, currentMessage, messageType, userId, eodContext = null, userInfo = null, channelId = null, recentBotResponses = []) {
+    const systemPrompt = await this.buildSystemPrompt(userId, channelId);
+    const userPrompt = this.buildUserPrompt(context, currentMessage, messageType, eodContext, userInfo, recentBotResponses);
     
     return {
       system: systemPrompt,

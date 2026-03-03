@@ -3,6 +3,8 @@ import { config } from '../config/slack.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { eodSummary } from './eodSummary.js';
+import { strikeEvaluator } from './strikeEvaluator.js';
+import { channelDigest } from '../ai/channelDigest.js';
 import db from '../database/postgres.js';
 
 let dailySummaryJob = null;
@@ -115,6 +117,28 @@ export const dailySummary = {
       
       const today = new Date().toISOString().split('T')[0];
       console.log(`📅 Date: ${today}`);
+
+      // Generate channel digests for both target + OBI channels
+      console.log('📰 Generating channel digests...');
+      try {
+        await channelDigest.generateAndSaveDigest(config.target.channelId, today, slackClient);
+        await channelDigest.generateAndSaveDigest('C08UM4WCYAZ', today, slackClient);
+        console.log('✅ Channel digests saved');
+      } catch (digestErr) {
+        console.error('⚠️ Channel digest generation failed (non-fatal):', digestErr.message);
+      }
+
+      // Read today's strike data (evaluation runs on its own cron at 9:30 PM IST)
+      console.log('⚡ Fetching strike data...');
+      let strikeData = [];
+      let weeklyStrikeData = [];
+      try {
+        strikeData = await strikeEvaluator.getTodayStrikes(today);
+        weeklyStrikeData = await strikeEvaluator.getWeeklyStrikeSummary();
+        console.log(`✅ Strike data fetched: ${strikeData.length} strikes today`);
+      } catch (strikeErr) {
+        console.error('⚠️ Strike data fetch failed (non-fatal):', strikeErr.message);
+      }
       
       // Generate all sections
       console.log('⏰ Generating Jibble section...');
@@ -129,31 +153,36 @@ export const dailySummary = {
       const eodReport = await this.generateEODSection(today);
       console.log(`   EOD summary: ${eodReport.summary}`);
       
-      // Build Slack blocks with collapsible sections
+      // Build base Slack blocks
       console.log('🔨 Building Slack blocks...');
-      const blocks = this.buildSummaryBlocks(today, jibbleReport, obiReport, eodReport);
-      console.log(`   Created ${blocks.length} blocks`);
+      const baseBlocks = this.buildSummaryBlocks(today, jibbleReport, obiReport, eodReport);
+
+      // Build strike blocks (manager-only section)
+      const strikeBlocks = this.buildStrikeBlocks(today, strikeData, weeklyStrikeData);
+      const managerBlocks = [...baseBlocks, ...strikeBlocks];
+
+      console.log(`   Created ${baseBlocks.length} base blocks + ${strikeBlocks.length} strike blocks`);
       
-      // Send to Phani Kumar
+      // Send to Phani Kumar (with strike section)
       console.log(`📤 Sending summary to Phani Kumar (${PHANI_KUMAR_ID})...`);
       try {
         await slackClient.chat.postMessage({
           channel: PHANI_KUMAR_ID,
           text: `Daily Summary - ${today}`,
-          blocks: blocks,
+          blocks: managerBlocks,
         });
         console.log('✅ Sent to Phani Kumar');
       } catch (error) {
         console.error('❌ Error sending to Phani Kumar:', error.message);
       }
       
-      // Send to Antony
+      // Send to Antony (with strike section)
       console.log(`📤 Sending summary to Antony (${ANTONY_ID})...`);
       try {
         await slackClient.chat.postMessage({
           channel: ANTONY_ID,
           text: `Daily Summary - ${today}`,
-          blocks: blocks,
+          blocks: managerBlocks,
         });
         console.log('✅ Sent to Antony');
       } catch (error) {
@@ -589,6 +618,85 @@ Focus on:
     });
 
     return blocks;
+  },
+
+  buildStrikeBlocks(date, todayStrikes, weeklyData) {
+    const blocks = [];
+
+    blocks.push({ type: 'divider' });
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*⚡ Strike Report — ${date}*\n_Confidential: visible only to Antony and Phani_`
+      }
+    });
+
+    // Today's strikes grouped by user
+    if (todayStrikes.length === 0) {
+      blocks.push({
+        type: 'section',
+        text: { type: 'mrkdwn', text: '✅ No strikes today' }
+      });
+    } else {
+      const byUser = {};
+      for (const row of todayStrikes) {
+        const key = row.user_id;
+        if (!byUser[key]) {
+          byUser[key] = {
+            name: row.display_name || row.real_name || row.user_id,
+            userId: row.user_id,
+            strikes: []
+          };
+        }
+        byUser[key].strikes.push(`${this._strikeLabel(row.strike_type)}: ${row.details || ''}`);
+      }
+
+      let todayText = '*Today\'s Strikes:*\n';
+      for (const { name, userId, strikes } of Object.values(byUser)) {
+        todayText += `• *${name}* (<@${userId}>) — ${strikes.length} strike${strikes.length > 1 ? 's' : ''}\n`;
+        strikes.forEach(s => { todayText += `  _${s}_\n`; });
+      }
+
+      blocks.push({
+        type: 'section',
+        text: { type: 'mrkdwn', text: todayText }
+      });
+    }
+
+    // Weekly totals
+    if (weeklyData && weeklyData.length > 0) {
+      let weeklyText = '*Weekly Totals (this week):*\n';
+      for (const row of weeklyData) {
+        const name = row.display_name || row.real_name || row.user_id;
+        const breakdown = row.strike_breakdown ? JSON.parse(row.strike_breakdown) : {};
+        const breakdownStr = Object.entries(breakdown)
+          .map(([type, count]) => `${this._strikeLabel(type)}: ${count}`)
+          .join(', ');
+        const flag = row.escalated ? ' ⚠️ *ESCALATED*' : '';
+        weeklyText += `• *${name}*: ${row.total_strikes} strike${row.total_strikes !== 1 ? 's' : ''}${flag}`;
+        if (breakdownStr) weeklyText += ` _(${breakdownStr})_`;
+        weeklyText += '\n';
+      }
+
+      blocks.push({
+        type: 'section',
+        text: { type: 'mrkdwn', text: weeklyText }
+      });
+    }
+
+    return blocks;
+  },
+
+  _strikeLabel(type) {
+    const labels = {
+      no_eod: 'No EOD',
+      low_quality: 'Low quality EOD',
+      short_hours: 'Short hours (<8h)',
+      overdue_tasks: 'Overdue ClickUp tasks',
+      no_checkin: 'No morning check-in',
+    };
+    return labels[type] || type;
   },
 
   stop() {
