@@ -106,9 +106,36 @@ export const messageHandler = {
         return;
       }
 
+      // Check if this is a reply to a bot message (thread) and contains a question
+      let isQuestionInThread = false;
+      if (message.thread_ts && message.text) {
+        try {
+          // Get the parent message to check if it's from the bot
+          const threadInfo = await client.conversations.replies({
+            channel: message.channel,
+            ts: message.thread_ts,
+            limit: 1
+          });
+          
+          const parentMessage = threadInfo.messages[0];
+          const isBotThread = parentMessage && parentMessage.bot_id;
+          
+          // Detect if message contains a question (?, "how", "what", "when", "where", "why", "can you", etc.)
+          const hasQuestionMark = message.text.includes('?');
+          const hasQuestionWord = /\b(how|what|when|where|why|who|which|can you|could you|would you|help|clarify|explain)\b/i.test(message.text);
+          
+          if (isBotThread && (hasQuestionMark || hasQuestionWord)) {
+            isQuestionInThread = true;
+            console.log('📝 Question detected in bot thread, will respond proactively');
+          }
+        } catch (error) {
+          console.error('Error checking thread parent:', error);
+        }
+      }
+
       const messageType = contextBuilder.detectMessageType(message.text);
       const isEODUpdate = messageType === 'eod_update';
-      const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId);
+      const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId) || isQuestionInThread;
       
       // Check if message is a simple acknowledgment (e.g., "ok @Antony", "Ok @Antony")
       const isSimpleAck = message.text && /^(ok|okay|sure|got it|noted|understood)\s*(@\w+)?$/i.test(message.text.trim());
