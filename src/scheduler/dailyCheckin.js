@@ -55,12 +55,13 @@ Time for your daily planning check-in. Please reply in thread with specific deta
       // Store the message timestamp for thread tracking
       const today = new Date().toISOString().split('T')[0];
       
-      // Get all team members who should respond (non-freelancers)
+      // Get all team members who should respond (non-freelancers and non-excluded)
       const allMembers = await messageStore.getTeamMembers();
       const freelancerIds = config.scheduler.freelancerIds || [];
+      const excludedIds = config.scheduler.excludedUserIds || [];
       
       for (const member of allMembers) {
-        if (!freelancerIds.includes(member.user_id)) {
+        if (!freelancerIds.includes(member.user_id) && !excludedIds.includes(member.user_id)) {
           await messageStore.saveCheckin({
             date: today,
             userId: member.user_id,

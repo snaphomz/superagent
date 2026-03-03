@@ -33,6 +33,7 @@ export const config = {
     pingInterval: parseInt(process.env.PING_INTERVAL_MINUTES || '30'),
     programManagerId: process.env.PROGRAM_MANAGER_USER_ID,
     freelancerIds: (process.env.FREELANCER_USER_IDS || '').split(',').filter(Boolean),
+    excludedUserIds: (process.env.EXCLUDED_USER_IDS || '').split(',').filter(Boolean),
     ericUserId: process.env.ERIC_USER_ID,
     pavanUserId: process.env.PAVAN_USER_ID,
   },
