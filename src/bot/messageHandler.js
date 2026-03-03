@@ -12,6 +12,8 @@ import { dailyCheckin } from '../scheduler/dailyCheckin.js';
 export const messageHandler = {
   async handleMessage(message, client) {
     try {
+      console.log(`\n🔔 MESSAGE RECEIVED - Channel: ${message.channel}, User: ${message.user}, Thread: ${message.thread_ts || 'none'}, Text: "${message.text?.substring(0, 100)}"`);
+      
       // Handle Jibble attendance channel messages (all messages, including bot messages)
       if (message.channel === 'C09GDQ1RX7G') {
         await jibbleMonitor.handleMessage(message, client);
