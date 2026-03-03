@@ -35,6 +35,29 @@ export function createSlackBot() {
       }
     }
 
+    // Handle daily summary test command
+    if (message.text && message.text.trim().toLowerCase() === '!daily summary') {
+      try {
+        console.log('🧪 Manual daily summary trigger detected');
+        const { dailySummary } = await import('../scheduler/dailySummary.js');
+        dailySummary.initialize(client);
+        await dailySummary.sendDailySummary();
+        
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: '✅ Daily summary sent! Check your DMs.',
+        });
+        return;
+      } catch (error) {
+        console.error('Error generating daily summary:', error);
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: '❌ Error generating daily summary. Please try again.',
+        });
+        return;
+      }
+    }
+
     await messageHandler.handleMessage(message, client);
   });
 
