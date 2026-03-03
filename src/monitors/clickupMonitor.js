@@ -131,22 +131,24 @@ export const clickupMonitor = {
   getSlackMentions(assignees) {
     // Map ClickUp usernames to Slack user IDs
     const userMapping = {
-      'Devarapalli Deepthi': 'U09QAS25E30',
-      'devarapalli deepthi': 'U09QAS25E30',
+      'Antony': 'U08UHMRV2ES',
+      'antony': 'U08UHMRV2ES',
+      'Devarapalli Deepthi': 'U09MTRQ2JPQ',
+      'devarapalli deepthi': 'U09MTRQ2JPQ',
       'Eric Samuel': 'U09034VD8QG',
       'eric samuel': 'U09034VD8QG',
-      'Harish Kakaraparthi': 'U09QRQLTBPT',
-      'harish kakaraparthi': 'U09QRQLTBPT',
+      'Harish Kakaraparthi': 'U09QRQKKUGH',
+      'harish kakaraparthi': 'U09QRQKKUGH',
       'Pavan Balla': 'U09QRQLTBPT',
       'pavan balla': 'U09QRQLTBPT',
       'Phani kumar': 'U09KQK8V7ST',
       'phani kumar': 'U09KQK8V7ST',
-      'Pranati Manthena': 'U09QAS25E30',
-      'pranati manthena': 'U09QAS25E30',
-      'Sai Deepthi Molugari': 'U09QAS25E30',
-      'sai deepthi molugari': 'U09QAS25E30',
-      'Vyshnavi Devi': 'U09QAS25E30',
-      'vyshnavi devi': 'U09QAS25E30',
+      'Pranati Manthena': 'U0A4X9T7W06',
+      'pranati manthena': 'U0A4X9T7W06',
+      'Sai Deepthi Molugari': 'U0A31RQN0M7',
+      'sai deepthi molugari': 'U0A31RQN0M7',
+      'Vyshnavi Devi': 'U09D1SBHZSL',
+      'vyshnavi devi': 'U09D1SBHZSL',
     };
 
     const mentions = [];

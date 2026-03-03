@@ -6,16 +6,17 @@ This file documents how to map ClickUp users to Slack users for @mentions in ove
 
 The mapping is defined in `src/monitors/clickupMonitor.js` in the `getSlackMentions` method:
 
-| ClickUp Username | Slack User ID | Team Member |
-|-----------------|---------------|-------------|
-| Devarapalli Deepthi | U09QAS25E30 | Deepthi D |
-| Eric Samuel | U09034VD8QG | Eric J |
-| Harish Kakaraparthi | U09QRQLTBPT | Harish K |
-| Pavan Balla | U09QRQLTBPT | Pavan B |
-| Phani kumar | U09KQK8V7ST | Phani Kumar |
-| Pranati Manthena | U09QAS25E30 | Pranati Manthena |
-| Sai Deepthi Molugari | U09QAS25E30 | Sai Deepthi Molugari |
-| Vyshnavi Devi | U09QAS25E30 | Vyshnavi |
+| ClickUp Username | Slack User ID | Slack Name |
+|-----------------|---------------|------------|
+| Antony | U08UHMRV2ES | Antony |
+| Devarapalli Deepthi | U09MTRQ2JPQ | Devarapalli Deepthi |
+| Eric Samuel | U09034VD8QG | Eric |
+| Harish Kakaraparthi | U09QRQKKUGH | Harish K |
+| Pavan Balla | U09QRQLTBPT | Pavan |
+| Phani kumar | U09KQK8V7ST | M.D.Phani kumar |
+| Pranati Manthena | U0A4X9T7W06 | Pranati Manthena |
+| Sai Deepthi Molugari | U0A31RQN0M7 | Sai Deepthi |
+| Vyshnavi Devi | U09D1SBHZSL | Vyshnavi Devi |
 
 **Note:** The mapping includes both exact case and lowercase versions for case-insensitive matching.
 
