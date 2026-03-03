@@ -6,6 +6,7 @@ import { dailyCheckin } from './scheduler/dailyCheckin.js';
 import { checkinValidator } from './scheduler/checkinValidator.js';
 import { codePushReminder } from './scheduler/codePushReminder.js';
 import { eodSummary } from './scheduler/eodSummary.js';
+import { hydrationReminder } from './scheduler/hydrationReminder.js';
 
 async function main() {
   console.log('🚀 Starting Slack Personality Bot...\n');
@@ -40,7 +41,8 @@ async function main() {
   const client = app.client;
   dailyCheckin.initialize(client);
   checkinValidator.initialize(client);
-  codePushReminder.initialize(client);
+  codePushRe.initialize(client);
+  hydrationReminderminder.initialize(client);
   eodSummary.initialize(client);
   console.log('✅ Schedulers initialized\n');
 
@@ -59,6 +61,7 @@ process.on('SIGINT', () => {
   dailyCheckin.stop();
   checkinValidator.stop();
   codePushReminder.stop();
+  hydrationReminder.stop();
   console.log('✅ Schedulers stopped');
   
   db.close((err) => {

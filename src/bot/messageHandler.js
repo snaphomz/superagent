@@ -5,6 +5,7 @@ import { config } from '../config/slack.js';
 import { eodSummary } from '../scheduler/eodSummary.js';
 import { codePushReminder } from '../scheduler/codePushReminder.js';
 import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
+import { hydrationReminder } from '../scheduler/hydrationReminder.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -31,6 +32,9 @@ export const messageHandler = {
 
       await messageStore.saveMessage(message);
       console.log(`Saved message from ${message.user}: ${message.text?.substring(0, 50)}...`);
+      
+      // Track activity for hydration reminder system
+      hydrationReminder.recordActivity();
 
       // Track EOD updates for summary
       await eodSummary.trackEODUpdate(message);
@@ -79,8 +83,7 @@ export const messageHandler = {
       try {
         const userInfoResponse = await client.users.info({ user: message.user });
         userInfo = userInfoResponse.user;
-        const userName = userInfo.profile?.display_name || userInfo.name;
-        console.log(`User: ${userName} (${message.user})`);
+        console.log(`User: <@${message.user}>`);
       } catch (error) {
         console.log('Could not fetch user info:', error.message);
       }

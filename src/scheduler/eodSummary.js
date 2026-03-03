@@ -116,11 +116,7 @@ export const eodSummary = {
         const eodCache = eodUpdateCache.get(cacheKey);
 
         if (eodCache) {
-          const teamMember = await messageStore.getTeamMembers();
-          const memberInfo = teamMember.find(m => m.user_id === member.user_id);
-          const displayName = memberInfo?.display_name || memberInfo?.real_name || member.user_id;
-
-          summary += `👤 *${displayName}* (<@${member.user_id}>)\n`;
+          summary += `👤 <@${member.user_id}>\n`;
 
           if (eodCache.eodData) {
             if (eodCache.eodData.purpose) {
