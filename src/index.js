@@ -18,14 +18,56 @@ async function main() {
   // Create and start HTTP health check server FIRST for Fly.io
   const PORT = process.env.PORT || 8080;
   
-  healthCheckServer = http.createServer((req, res) => {
-    if (req.url === '/health' || req.url === '/') {
+  healthCheckServer = http.createServer(async (req, res) => {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    
+    if (url.pathname === '/health' || url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         status: 'healthy', 
         uptime: process.uptime(),
         timestamp: new Date().toISOString()
       }));
+    } else if (url.pathname === '/auth/clickup/callback') {
+      // Handle ClickUp OAuth callback
+      const code = url.searchParams.get('code');
+      
+      if (code) {
+        try {
+          const { clickupClient } = await import('./integrations/clickupClient.js');
+          const tokenData = await clickupClient.exchangeCodeForToken(code);
+          
+          console.log('✅ ClickUp OAuth successful!');
+          console.log('Access Token:', tokenData.access_token);
+          
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
+            <html>
+              <body style="font-family: Arial; padding: 40px; text-align: center;">
+                <h1>✅ ClickUp Connected Successfully!</h1>
+                <p>You can close this window and return to Slack.</p>
+                <p style="color: #666; font-size: 12px; margin-top: 40px;">
+                  Access token has been saved to the bot.
+                </p>
+              </body>
+            </html>
+          `);
+        } catch (error) {
+          console.error('❌ ClickUp OAuth error:', error);
+          res.writeHead(500, { 'Content-Type': 'text/html' });
+          res.end(`
+            <html>
+              <body style="font-family: Arial; padding: 40px; text-align: center;">
+                <h1>❌ Connection Failed</h1>
+                <p>Error: ${error.message}</p>
+              </body>
+            </html>
+          `);
+        }
+      } else {
+        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.end('<html><body><h1>Missing authorization code</h1></body></html>');
+      }
     } else {
       res.writeHead(404);
       res.end('Not Found');
