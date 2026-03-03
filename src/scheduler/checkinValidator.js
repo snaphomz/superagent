@@ -147,16 +147,32 @@ export const checkinValidator = {
     try {
       const checkins = await messageStore.getTodayCheckins(date);
       const freelancerIds = config.scheduler.freelancerIds || [];
+      const excludedIds = config.scheduler.excludedUserIds || [];
 
       for (const checkin of checkins) {
         // Skip freelancers
-        if (freelancerIds.includes(checkin.user_id)) continue;
+        if (freelancerIds.includes(checkin.user_id)) {
+          console.log(`⏭️  Skipping freelancer: ${checkin.user_id}`);
+          continue;
+        }
+
+        // Skip excluded users (Antony, Phani Kumar, Slackbot, Alfred, etc.)
+        if (excludedIds.includes(checkin.user_id)) {
+          console.log(`⏭️  Skipping excluded user: ${checkin.user_id}`);
+          continue;
+        }
 
         // Skip if already responded
-        if (checkin.morning_response_at) continue;
+        if (checkin.morning_response_at) {
+          console.log(`⏭️  User already responded: ${checkin.user_id}`);
+          continue;
+        }
 
         // Skip if already pinged max times
-        if (checkin.ping_count >= config.scheduler.maxPingAttempts) continue;
+        if (checkin.ping_count >= config.scheduler.maxPingAttempts) {
+          console.log(`⏭️  Max pings reached for: ${checkin.user_id}`);
+          continue;
+        }
 
         // Send ping
         const message = `<@${checkin.user_id}> - I haven't received your morning check-in yet. Are you not working today or is this a sick day? Please let us know! 🙏`;
@@ -184,21 +200,30 @@ export const checkinValidator = {
 
   async checkAndPingNonResponders() {
     try {
+      // Get current time in IST
       const now = new Date();
-      const currentHour = now.getHours();
+      const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const currentHour = istTime.getHours();
 
       // Only ping between 10 AM and 5 PM IST
       if (currentHour < 10 || currentHour >= 17) {
+        console.log(`⏭️  Skipping ping check - outside hours (current IST hour: ${currentHour})`);
         return;
       }
 
       const today = new Date().toISOString().split('T')[0];
       const checkins = await messageStore.getTodayCheckins(today);
 
-      if (checkins.length === 0) return;
+      if (checkins.length === 0) {
+        console.log('⏭️  No check-ins found for ping check');
+        return;
+      }
 
       const morningMessageTs = checkins[0]?.morning_message_ts;
-      if (!morningMessageTs) return;
+      if (!morningMessageTs) {
+        console.log('⏭️  No morning message timestamp for ping check');
+        return;
+      }
 
       await this.pingNonResponders(today, morningMessageTs);
     } catch (error) {
