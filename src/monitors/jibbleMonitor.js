@@ -23,8 +23,11 @@ export const jibbleMonitor = {
         return;
       }
 
+      console.log(`📥 Jibble channel message received: "${message.text?.substring(0, 100)}"`);
+
       // Only process messages from Jibble app
       if (!message.text || !message.bot_id) {
+        console.log('⏭️  Skipping - not a bot message or no text');
         return;
       }
 
@@ -36,6 +39,8 @@ export const jibbleMonitor = {
       if (attendance) {
         await this.saveAttendance(attendance);
         console.log(`✅ Jibble: ${attendance.user_name} - ${attendance.action_type} at ${attendance.timestamp}`);
+      } else {
+        console.log(`⏭️  Could not parse Jibble notification: "${text.substring(0, 100)}"`);
       }
     } catch (error) {
       console.error('❌ Error handling Jibble message:', error);

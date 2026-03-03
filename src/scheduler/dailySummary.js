@@ -114,30 +114,53 @@ export const dailySummary = {
       console.log('📊 Generating daily summary...');
       
       const today = new Date().toISOString().split('T')[0];
+      console.log(`📅 Date: ${today}`);
       
       // Generate all sections
+      console.log('⏰ Generating Jibble section...');
       const jibbleReport = await this.generateJibbleSection(today);
+      console.log(`   Found ${jibbleReport.length} Jibble attendance records`);
+      
+      console.log('🚀 Generating OBI section...');
       const obiReport = await this.generateOBISection(today);
+      console.log(`   OBI summary: ${obiReport.summary}`);
+      
+      console.log('📝 Generating EOD section...');
       const eodReport = await this.generateEODSection(today);
+      console.log(`   EOD summary: ${eodReport.summary}`);
       
       // Build Slack blocks with collapsible sections
+      console.log('🔨 Building Slack blocks...');
       const blocks = this.buildSummaryBlocks(today, jibbleReport, obiReport, eodReport);
+      console.log(`   Created ${blocks.length} blocks`);
       
       // Send to Phani Kumar
-      await slackClient.chat.postMessage({
-        channel: PHANI_KUMAR_ID,
-        text: `Daily Summary - ${today}`,
-        blocks: blocks,
-      });
+      console.log(`📤 Sending summary to Phani Kumar (${PHANI_KUMAR_ID})...`);
+      try {
+        await slackClient.chat.postMessage({
+          channel: PHANI_KUMAR_ID,
+          text: `Daily Summary - ${today}`,
+          blocks: blocks,
+        });
+        console.log('✅ Sent to Phani Kumar');
+      } catch (error) {
+        console.error('❌ Error sending to Phani Kumar:', error.message);
+      }
       
       // Send to Antony
-      await slackClient.chat.postMessage({
-        channel: ANTONY_ID,
-        text: `Daily Summary - ${today}`,
-        blocks: blocks,
-      });
+      console.log(`📤 Sending summary to Antony (${ANTONY_ID})...`);
+      try {
+        await slackClient.chat.postMessage({
+          channel: ANTONY_ID,
+          text: `Daily Summary - ${today}`,
+          blocks: blocks,
+        });
+        console.log('✅ Sent to Antony');
+      } catch (error) {
+        console.error('❌ Error sending to Antony:', error.message);
+      }
       
-      console.log('✅ Daily summary sent to Phani Kumar and Antony');
+      console.log('✅ Daily summary sending complete');
     } catch (error) {
       console.error('❌ Error sending daily summary:', error);
     }
