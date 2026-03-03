@@ -109,6 +109,7 @@ export const messageHandler = {
       // Check if this is a reply to a bot message (thread) and contains a question
       let isQuestionInThread = false;
       if (message.thread_ts && message.text) {
+        console.log(`🔍 Checking thread reply: "${message.text.substring(0, 100)}"`);
         try {
           // Get the parent message to check if it's from the bot
           const threadInfo = await client.conversations.replies({
@@ -120,16 +121,22 @@ export const messageHandler = {
           const parentMessage = threadInfo.messages[0];
           const isBotThread = parentMessage && parentMessage.bot_id;
           
+          console.log(`Thread parent - bot_id: ${parentMessage?.bot_id}, user: ${parentMessage?.user}`);
+          
           // Detect if message contains a question (?, "how", "what", "when", "where", "why", "can you", etc.)
           const hasQuestionMark = message.text.includes('?');
           const hasQuestionWord = /\b(how|what|when|where|why|who|which|can you|could you|would you|help|clarify|explain)\b/i.test(message.text);
           
+          console.log(`Question detection - hasQuestionMark: ${hasQuestionMark}, hasQuestionWord: ${hasQuestionWord}, isBotThread: ${isBotThread}`);
+          
           if (isBotThread && (hasQuestionMark || hasQuestionWord)) {
             isQuestionInThread = true;
-            console.log('📝 Question detected in bot thread, will respond proactively');
+            console.log('✅ Question detected in bot thread, will respond proactively');
+          } else if (hasQuestionMark || hasQuestionWord) {
+            console.log(`⚠️ Question found but not in bot thread (isBotThread: ${isBotThread})`);
           }
         } catch (error) {
-          console.error('Error checking thread parent:', error);
+          console.error('❌ Error checking thread parent:', error);
         }
       }
 
