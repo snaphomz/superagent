@@ -2,6 +2,8 @@ import pkg from '@slack/bolt';
 const { App } = pkg;
 import { config } from '../config/slack.js';
 import { messageHandler } from './messageHandler.js';
+import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
+import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -12,6 +14,27 @@ export function createSlackBot() {
   });
 
   app.message(async ({ message, client }) => {
+    // Handle Jibble summary command
+    if (message.text && message.text.trim().toLowerCase() === '!jibble summary') {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const summary = await jibbleMonitor.generateDailySummary(today);
+        
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: summary,
+        });
+        return;
+      } catch (error) {
+        console.error('Error generating Jibble summary:', error);
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: '❌ Error generating Jibble attendance summary. Please try again.',
+        });
+        return;
+      }
+    }
+
     await messageHandler.handleMessage(message, client);
   });
 

@@ -77,6 +77,30 @@ async function initializeDatabase() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS jibble_attendance (
+        id SERIAL PRIMARY KEY,
+        user_name TEXT NOT NULL,
+        action_type TEXT NOT NULL,
+        device_info TEXT,
+        timestamp TIMESTAMP NOT NULL,
+        date DATE NOT NULL,
+        message_ts TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_name, timestamp)
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_jibble_user_date 
+      ON jibble_attendance(user_name, date)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_jibble_date 
+      ON jibble_attendance(date)
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS daily_checkins (
         id SERIAL PRIMARY KEY,
         date DATE NOT NULL,

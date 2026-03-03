@@ -6,23 +6,37 @@ import { eodSummary } from '../scheduler/eodSummary.js';
 import { codePushReminder } from '../scheduler/codePushReminder.js';
 import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { hydrationReminder } from '../scheduler/hydrationReminder.js';
+import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
     try {
+      // Handle Jibble attendance channel messages (all messages, including bot messages)
+      if (message.channel === 'C09GDQ1RX7G') {
+        await jibbleMonitor.handleMessage(message, client);
+        return;
+      }
+
+      // Handle OBI Team external channel messages
+      if (message.channel === 'C08UM4WCYAZ') {
+        await obiTeamMonitor.handleMessage(message, client);
+        return;
+      }
+
+      // Check for manual OBI summary trigger in main channel
+      if (message.text && message.text.trim().toLowerCase() === '!obi summary') {
+        console.log('🧪 Manual OBI summary trigger detected');
+        await obiTeamMonitor.handleMessage(message, client);
+        return;
+      }
+
+      // Only process target channel messages from here on
       if (message.channel !== config.target.channelId) {
         return;
       }
 
       // Skip messages without user_id (bot messages, system messages, etc.)
       if (!message.user) {
-        return;
-      }
-
-      // Check for manual OBI summary trigger first (before saving)
-      if (message.text && message.text.trim().toLowerCase() === '!obi summary') {
-        console.log('🧪 Manual OBI summary trigger detected');
-        await obiTeamMonitor.handleMessage(message, client);
         return;
       }
 
@@ -43,12 +57,6 @@ export const messageHandler = {
       const codePushTs = codePushReminder.getCodePushMessageTs();
       if (codePushTs && message.thread_ts === codePushTs) {
         await codePushReminder.trackAcknowledgment(message.user, message.ts);
-      }
-
-      // Handle OBI Team messages
-      if (message.user === config.obiTeam.userId) {
-        await obiTeamMonitor.handleMessage(message, client);
-        return;
       }
 
       // Track Eric/Pavan responses to OBI Team requests
