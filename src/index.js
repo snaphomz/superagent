@@ -10,10 +10,14 @@ import { hydrationReminder } from './scheduler/hydrationReminder.js';
 import { dailySummary } from './scheduler/dailySummary.js';
 import http from 'http';
 
+let healthCheckServer;
+
 async function main() {
   console.log('🚀 Starting Slack Personality Bot...\n');
 
-  // Create HTTP health check server for Fly.io
+  // Create and start HTTP health check server FIRST for Fly.io
+  const PORT = process.env.PORT || 8080;
+  
   healthCheckServer = http.createServer((req, res) => {
     if (req.url === '/health' || req.url === '/') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -28,10 +32,13 @@ async function main() {
     }
   });
 
-  const PORT = process.env.PORT || 8080;
-  healthCheckServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Health check server listening on 0.0.0.0:${PORT}`);
-    console.log(`   This keeps Fly.io machines alive 24/7\n`);
+  // Start health check server and wait for it to be ready
+  await new Promise((resolve) => {
+    healthCheckServer.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Health check server listening on 0.0.0.0:${PORT}`);
+      console.log(`   This keeps Fly.io machines alive 24/7\n`);
+      resolve();
+    });
   });
 
   console.log('Configuration:');
@@ -77,8 +84,6 @@ main().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-
-let healthCheckServer;
 
 process.on('SIGINT', () => {
   console.log('\n\n👋 Shutting down bot...');
