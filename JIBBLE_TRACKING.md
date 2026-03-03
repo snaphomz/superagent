@@ -13,7 +13,6 @@ The bot now monitors the Jibble channel (C09GDQ1RX7G) and automatically tracks c
 - Pranati Manthena
 - Harish K
 - Sai Deepthi Molugari
-- Sangita
 
 ## Features
 

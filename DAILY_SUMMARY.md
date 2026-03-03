@@ -18,7 +18,6 @@ Tracks all team members from channel C09GDQ1RX7G:
 - Pranati Manthena
 - Harish K
 - Sai Deepthi Molugari
-- Sangita
 
 **Information shown:**
 - First clock-in time
@@ -104,7 +103,7 @@ The summary pulls data from:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⏰ Jibble Attendance Report
-8 team members tracked
+7 team members tracked
 
 Deepthi D
 • Clock In: 07:53 PM

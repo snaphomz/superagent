@@ -8,9 +8,8 @@ The mapping is defined in `src/monitors/clickupMonitor.js` in the `getSlackMenti
 
 ```javascript
 const userMapping = {
-  'Devarapalli Deepthi': 'U09QAS25E30',
-  'deepthi': 'U09QAS25E30',
-  // Add more mappings as needed
+  // Add team member mappings here
+  // Example: 'ClickUp Username': 'SLACK_USER_ID',
 };
 ```
 
@@ -61,7 +60,6 @@ Based on your team, here are the known members:
 
 | Name | Slack User ID | ClickUp Username |
 |------|---------------|------------------|
-| Devarapalli Deepthi | U09QAS25E30 | Devarapalli Deepthi |
 | Eric | U09034VD8QG | (Add ClickUp username) |
 | Pavan | U09QRQLTBPT | (Add ClickUp username) |
 | Phani Kumar | U09KQK8V7ST | (Add ClickUp username) |
@@ -69,18 +67,18 @@ Based on your team, here are the known members:
 
 ## Example Notification
 
-When a task is overdue and assigned to Deepthi:
+When a task is overdue and assigned to a team member:
 
 ```
 ⚠️ Overdue Task Alert
 
 Pre Approval
-• Assigned to: @Devarapalli Deepthi
+• Assigned to: @Eric
 • Due date: 3/31/2026 (5 days overdue)
 • Status: to do
 • Priority: None
 
-@Devarapalli Deepthi - Please update the due date or add a comment with your progress.
+@Eric - Please update the due date or add a comment with your progress.
 
 View in ClickUp
 ```

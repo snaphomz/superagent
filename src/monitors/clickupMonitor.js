@@ -132,9 +132,8 @@ export const clickupMonitor = {
     // Map ClickUp usernames to Slack user IDs
     // You can customize this mapping based on your team
     const userMapping = {
-      'Devarapalli Deepthi': 'U09QAS25E30', // Replace with actual Slack user ID
-      'deepthi': 'U09QAS25E30',
-      // Add more mappings as needed
+      // Add team member mappings here
+      // Example: 'ClickUp Username': 'SLACK_USER_ID',
     };
 
     const mentions = [];

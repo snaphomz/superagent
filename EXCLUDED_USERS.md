@@ -15,7 +15,6 @@ Add these users to your `.env` file:
 - **Antony** - User ID: (needs to be found)
 - **Slackbot** - User ID: USLACKBOT (or similar)
 - **Phani Kumar** - User ID: (needs to be found)
-- **T Deepthi** - User ID: (needs to be found)
 
 ## Configuration
 
