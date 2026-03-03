@@ -57,7 +57,6 @@ export function createSlackBot() {
       try {
         console.log('🧪 Manual daily summary trigger detected');
         const { dailySummary } = await import('../scheduler/dailySummary.js');
-        dailySummary.initialize(client);
         await dailySummary.sendDailySummary();
         
         await client.chat.postMessage({
