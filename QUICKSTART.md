@@ -77,6 +77,13 @@ The bot is now:
 - 🤖 Generating responses in your style
 - ✅ Auto-sending high-confidence responses (>85%)
 - 📨 Sending low-confidence to you for review
+- ⏰ Running schedulers in IST timezone (Asia/Kolkata)
+
+**Automated Schedulers:**
+- Morning Check-in: 9:00 AM IST
+- Check-in Validation: 10:00 AM IST
+- Code Push Reminder: 5:30 PM IST
+- Daily Summary: Every 30 min from 6-11 PM IST
 
 ## 🎯 Test It
 
@@ -117,6 +124,24 @@ MAX_CONTEXT_MESSAGES=20   # Conversation history
 **Need help?**
 See full docs in README.md
 
+## 🚀 Deploy to Production (Optional)
+
+For 24/7 operation on Fly.io:
+
+1. See **FLY_DEPLOYMENT.md** for complete guide
+2. Takes ~15 minutes to deploy
+3. Free tier available, then $7/month
+4. Includes PostgreSQL database and health checks
+
+**Benefits:**
+- 24/7 uptime with automatic restarts
+- Cloud PostgreSQL database
+- All schedulers run automatically in IST
+- No need to keep your computer running
+
 ---
 
 **That's it! You're ready to go! 🎉**
+
+**Running locally?** Bot works great for development and testing.
+**Want 24/7 operation?** Deploy to Fly.io (see FLY_DEPLOYMENT.md)

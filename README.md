@@ -11,9 +11,18 @@ A Slack bot that learns your communication style and automatically responds to t
 - 💾 **Local Storage**: All data stored securely in SQLite database
 - 👥 **Team Detection**: Automatically learns team member patterns
 
+## Deployment
+
+**Production:** Deployed on Fly.io with PostgreSQL database
+- See `FLY_DEPLOYMENT.md` for complete deployment guide
+- Free tier available, then $7/month
+- Includes health checks and automatic restarts
+- All schedulers run in IST (Asia/Kolkata) timezone
+
 ## Cost Estimate
 
 Using GPT-4o-mini: **$5-15/month** for typical team usage (100-300 messages/day)
+Fly.io hosting: **Free tier available**, then $7/month
 
 ## Prerequisites
 
@@ -149,14 +158,20 @@ The bot learns from your messages:
 Edit `.env` to customize:
 
 ```bash
-# Auto-send threshold (0-100)
+# Bot Behavior
 AUTO_SEND_THRESHOLD=85
-
-# Delay before sending (seconds)
 RESPONSE_DELAY_SECONDS=3
-
-# Max context messages to consider
 MAX_CONTEXT_MESSAGES=20
+
+# Scheduler Times (IST - Asia/Kolkata)
+CHECKIN_TIMEZONE=Asia/Kolkata
+MORNING_CHECKIN_TIME=09:00
+CHECKIN_VALIDATION_TIME=10:00
+CODE_PUSH_REMINDER_TIME=17:30
+
+# Channels & Users
+TARGET_CHANNEL_ID=C09RPPPKCLB
+YOUR_USER_ID=U08UHMRV2ES
 ```
 
 ## Usage

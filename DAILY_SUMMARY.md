@@ -43,6 +43,13 @@ Consolidates all end-of-day updates from the main channel (C09RPPPKCLB):
 - Reddit engagement
 - Action items for next day
 
+**AI-Powered Analysis:**
+The bot uses GPT-4o-mini to analyze EOD updates and identify:
+- 🚩 **Red Flags**: Missing information, blockers, delays
+- 💡 **Insights**: Patterns, trends, team coordination issues
+- 📊 **Executive Summary**: High-level overview of daily progress
+- ⚠️ **Potential Issues**: Ambiguity, unclear next steps, dependencies
+
 ## Recipients
 
 The summary is sent as a **direct message** to:
@@ -51,9 +58,12 @@ The summary is sent as a **direct message** to:
 
 ## Schedule
 
-- **Time:** 11:30 PM IST (23:30)
-- **Frequency:** Daily
-- **Timezone:** Asia/Kolkata
+- **Checking Period:** 6:00 PM - 11:00 PM IST
+- **Check Frequency:** Every 30 minutes
+- **Sends When:** All team members have submitted EOD updates
+- **Timezone:** Asia/Kolkata (IST)
+
+The bot checks every 30 minutes starting at 6:00 PM IST. Once all required team members have submitted their EOD updates, the summary is generated and sent immediately.
 
 ## Format
 
@@ -142,7 +152,23 @@ External Deployment Updates
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Generated at 11:30:00 PM IST
+🤖 AI Analysis
+
+🚩 Red Flags:
+• 2 team members mentioned blockers
+• 1 task has unclear timeline
+
+💡 Key Insights:
+• Strong progress on AI integration features
+• Testing phase for multiple components
+• Coordination needed between frontend and backend teams
+
+📊 Executive Summary:
+Team made solid progress on core features. Testing phase active with some blockers identified. Clear action items for tomorrow.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Generated at 8:30:00 PM IST
 ```
 
 ## Benefits
@@ -151,14 +177,25 @@ Generated at 11:30:00 PM IST
 2. **Automatic delivery** - no manual effort required
 3. **Consistent format** - easy to review and compare
 4. **Action-oriented** - highlights what needs attention
-5. **Historical record** - can reference past summaries
+5. **AI-powered insights** - identifies red flags and patterns automatically
+6. **Executive summary** - high-level overview for quick scanning
+7. **Historical record** - can reference past summaries
+
+## Current AI Features
+
+✅ **Already Implemented:**
+- AI-generated insights and red flag detection
+- Automated analysis of EOD updates
+- Executive summaries
+- Pattern identification
+- Ambiguity detection
 
 ## Future Enhancements
 
 Potential additions:
-- AI-generated insights and trends
 - Week-over-week comparisons
-- Productivity metrics
-- Automated action item extraction
-- Integration with project management tools
+- Productivity metrics and trends
+- Automated action item extraction with priority
+- Enhanced ClickUp integration in summaries
 - Export to PDF/email
+- Customizable analysis criteria

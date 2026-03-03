@@ -115,6 +115,21 @@ Before running, verify:
 - Check you have credits available
 - Ensure GPT-4o-mini access
 
+## Deployment to Production
+
+For 24/7 operation, deploy to Fly.io:
+
+1. **See FLY_DEPLOYMENT.md** for complete deployment guide
+2. Bot runs on Fly.io with PostgreSQL database
+3. All schedulers run in IST (Asia/Kolkata) timezone
+4. Health checks ensure 24/7 uptime
+
+**Scheduler Times (IST):**
+- Morning Check-in: 9:00 AM
+- Check-in Validation: 10:00 AM
+- Code Push Reminder: 5:30 PM
+- Daily Summary: Every 30 min from 6-11 PM
+
 ## Next Steps
 
 Once running:
@@ -122,6 +137,7 @@ Once running:
 2. Watch console for bot activity
 3. Check if response is auto-sent or sent for review
 4. Adjust `AUTO_SEND_THRESHOLD` in `.env` if needed
+5. Deploy to Fly.io for 24/7 operation (see FLY_DEPLOYMENT.md)
 
 ## Support
 
