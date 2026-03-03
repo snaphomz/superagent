@@ -170,6 +170,7 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS eod_updates (
         id SERIAL PRIMARY KEY,
         user_id TEXT NOT NULL,
+        update_date DATE NOT NULL,
         summary TEXT,
         action_items TEXT,
         blockers TEXT,
@@ -177,12 +178,12 @@ async function initializeDatabase() {
         message_ts TEXT,
         thread_ts TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, CAST(timestamp AS DATE))
+        UNIQUE(user_id, update_date)
       )
     `);
 
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_eod_user_date ON eod_updates(user_id, CAST(timestamp AS DATE))
+      CREATE INDEX IF NOT EXISTS idx_eod_user_date ON eod_updates(user_id, update_date)
     `);
 
     await client.query(`
