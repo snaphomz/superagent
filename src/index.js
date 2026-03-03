@@ -119,6 +119,13 @@ async function main() {
   dailySummary.initialize(client);
   console.log('✅ Schedulers initialized\n');
 
+  // Initialize ClickUp monitor if configured
+  if (process.env.CLICKUP_CLIENT_ID) {
+    const { clickupMonitor } = await import('./monitors/clickupMonitor.js');
+    clickupMonitor.initialize(client);
+    console.log('✅ ClickUp monitor initialized\n');
+  }
+
   console.log('Press Ctrl+C to stop\n');
 }
 
@@ -127,7 +134,7 @@ main().catch((error) => {
   process.exit(1);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n\n👋 Shutting down bot...');
   
   // Stop schedulers
@@ -137,6 +144,12 @@ process.on('SIGINT', () => {
   hydrationReminder.stop();
   dailySummary.stop();
   console.log('✅ Schedulers stopped');
+
+  // Stop ClickUp monitor
+  if (process.env.CLICKUP_CLIENT_ID) {
+    const { clickupMonitor } = await import('./monitors/clickupMonitor.js');
+    clickupMonitor.stop();
+  }
   
   // Close health check server
   if (healthCheckServer) {
