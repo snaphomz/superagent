@@ -76,6 +76,24 @@ export const messageHandler = {
       const isEODUpdate = messageType === 'eod_update';
       const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId);
       
+      // Check if message is a simple acknowledgment (e.g., "ok @Antony", "Ok @Antony")
+      const isSimpleAck = message.text && /^(ok|okay|sure|got it|noted|understood)\s*(@\w+)?$/i.test(message.text.trim());
+      
+      if (isSimpleAck && isRelevant) {
+        console.log('Simple acknowledgment detected, reacting with thumbs up...');
+        try {
+          await client.reactions.add({
+            channel: message.channel,
+            name: 'thumbsup',
+            timestamp: message.ts,
+          });
+          console.log('✅ Added thumbs up reaction');
+        } catch (error) {
+          console.error('Error adding reaction:', error);
+        }
+        return;
+      }
+      
       if (!isRelevant && !isEODUpdate) {
         console.log('Message not relevant for response, skipping...');
         return;
