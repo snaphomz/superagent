@@ -236,19 +236,83 @@ export const dailySummary = {
   },
 
   async groupOBIConversations(messages) {
-    // Use AI to summarize and group OBI conversations
-    const messageTexts = messages.map(m => m.text).join('\n');
-    
-    // For now, return basic grouping - can enhance with AI later
-    return {
-      summary: `${messages.length} messages in OBI Team channel`,
-      items: [
-        {
-          title: 'External Deployment Updates',
-          details: `${messages.length} deployment-related messages tracked`
-        }
-      ]
-    };
+    try {
+      // Compile messages for AI analysis
+      const messageTexts = messages.map((m, i) => 
+        `[${i + 1}] ${m.text}`
+      ).join('\n');
+      
+      const { OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const prompt = `You are analyzing messages from the OBI Team external deployment channel. Summarize the key activities, identify any issues or blockers, and highlight important updates.
+
+Messages:
+${messageTexts}
+
+Provide:
+1. **Summary**: Brief overview of OBI Team activity
+2. **Key Updates**: Important deployment updates or changes
+3. **Issues**: Any problems, blockers, or concerns mentioned
+4. **Action Items**: Things that need follow-up
+
+Format as JSON:
+{
+  "summary": "brief overview",
+  "keyUpdates": ["update 1", "update 2", ...],
+  "issues": ["issue 1", "issue 2", ...],
+  "actionItems": ["action 1", "action 2", ...]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are analyzing external team communications for a project manager.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 800
+      });
+      
+      const analysis = JSON.parse(response.choices[0].message.content);
+      
+      const items = [];
+      if (analysis.keyUpdates && analysis.keyUpdates.length > 0) {
+        items.push({
+          title: '📢 Key Updates',
+          details: analysis.keyUpdates.join('\n• ')
+        });
+      }
+      if (analysis.issues && analysis.issues.length > 0) {
+        items.push({
+          title: '⚠️ Issues & Blockers',
+          details: analysis.issues.join('\n• ')
+        });
+      }
+      if (analysis.actionItems && analysis.actionItems.length > 0) {
+        items.push({
+          title: '✅ Action Items',
+          details: analysis.actionItems.join('\n• ')
+        });
+      }
+      
+      return {
+        summary: analysis.summary || `${messages.length} messages in OBI Team channel`,
+        items: items
+      };
+      
+    } catch (error) {
+      console.error('Error analyzing OBI conversations:', error);
+      return {
+        summary: `${messages.length} messages in OBI Team channel`,
+        items: [
+          {
+            title: 'External Deployment Updates',
+            details: `${messages.length} deployment-related messages tracked`
+          }
+        ]
+      };
+    }
   },
 
   async generateEODSection(date) {
@@ -271,7 +335,7 @@ export const dailySummary = {
       const eodUpdates = result.rows;
       
       if (eodUpdates.length === 0) {
-        return { summary: 'No EOD updates today', items: [] };
+        return { summary: 'No EOD updates today', items: [], redFlags: [], analysis: 'No updates to analyze' };
       }
       
       // Get team member names
@@ -299,13 +363,77 @@ export const dailySummary = {
         };
       });
       
+      // Use AI to analyze EOD updates for red flags and insights
+      const analysis = await this.analyzeEODUpdates(items);
+      
       return {
         summary: `${eodUpdates.length} team members provided EOD updates`,
-        items: items
+        items: items,
+        redFlags: analysis.redFlags,
+        insights: analysis.insights,
+        analysis: analysis.summary
       };
     } catch (error) {
       console.error('Error generating EOD section:', error);
-      return { summary: 'Error fetching EOD updates', items: [] };
+      return { summary: 'Error fetching EOD updates', items: [], redFlags: [], analysis: 'Error analyzing updates' };
+    }
+  },
+
+  async analyzeEODUpdates(updates) {
+    try {
+      // Compile all updates into a single text for AI analysis
+      const updatesText = updates.map(u => 
+        `${u.user}: ${u.update || ''}`
+      ).join('\n\n');
+      
+      const { OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const prompt = `You are analyzing end-of-day updates from a software development team. Your job is to identify red flags, potential delays, blockers, and ambiguities.
+
+Team Updates:
+${updatesText}
+
+Analyze these updates and provide:
+1. **Red Flags**: Any blockers, delays, unclear requirements, or concerning patterns
+2. **Insights**: Key observations about team progress and coordination
+3. **Summary**: A brief executive summary highlighting what needs attention
+
+Format your response as JSON:
+{
+  "redFlags": ["flag 1", "flag 2", ...],
+  "insights": ["insight 1", "insight 2", ...],
+  "summary": "brief executive summary"
+}
+
+Focus on:
+- Blockers or dependencies mentioned
+- Vague or ambiguous language ("might", "trying to", "not sure")
+- Delays or timeline concerns
+- Missing information or incomplete updates
+- Coordination issues between team members
+- Repeated problems or patterns`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a technical project manager analyzing team updates for risks and insights.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000
+      });
+      
+      const analysis = JSON.parse(response.choices[0].message.content);
+      return analysis;
+      
+    } catch (error) {
+      console.error('Error analyzing EOD updates with AI:', error);
+      return {
+        redFlags: [],
+        insights: ['Unable to generate AI analysis'],
+        summary: 'AI analysis unavailable'
+      };
     }
   },
 
@@ -368,7 +496,51 @@ export const dailySummary = {
 
     blocks.push({ type: 'divider' });
 
-    // EOD Updates Section
+    // EOD Updates Section with AI Analysis
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*📝 EOD Updates & Analysis*\n${eodReport.summary}`
+      }
+    });
+
+    // Add AI Analysis Summary
+    if (eodReport.analysis) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🔍 Executive Summary*\n${eodReport.analysis}`
+        }
+      });
+    }
+
+    // Add Red Flags if any
+    if (eodReport.redFlags && eodReport.redFlags.length > 0) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🚨 Red Flags & Concerns*\n${eodReport.redFlags.map(flag => `• ${flag}`).join('\n')}`
+        }
+      });
+    }
+
+    // Add Insights
+    if (eodReport.insights && eodReport.insights.length > 0) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*💡 Key Insights*\n${eodReport.insights.map(insight => `• ${insight}`).join('\n')}`
+        }
+      });
+    }
+
+    blocks.push({ type: 'divider' });
+
+    // Individual EOD Updates (collapsed)
     blocks.push({
       type: 'section',
       text: {
