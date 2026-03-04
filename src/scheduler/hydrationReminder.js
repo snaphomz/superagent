@@ -40,6 +40,14 @@ export const hydrationReminder = {
 
   async checkForSilence() {
     try {
+      // Only send reminders during IST working hours: 9 AM – 7 PM
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const istHour = nowIST.getHours();
+      if (istHour < 9 || istHour >= 19) {
+        console.log(`💧 Skipping hydration reminder - outside working hours (IST ${istHour}:00)`);
+        return;
+      }
+
       const now = Date.now();
       const silenceDuration = now - lastActivityTime;
       const silenceThresholdMs = 90 * 60 * 1000; // 90 minutes of silence
