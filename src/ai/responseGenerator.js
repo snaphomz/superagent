@@ -11,7 +11,7 @@ const openai = new OpenAI({
 });
 
 export const responseGenerator = {
-  async generateResponse(message, userInfo = null) {
+  async generateResponse(message, userInfo = null, options = {}) {
     try {
       const messageType = contextBuilder.detectMessageType(message.text);
       
@@ -55,7 +55,8 @@ export const responseGenerator = {
         eodContext,
         userInfo,
         message.channel,
-        recentBotResponses
+        recentBotResponses,
+        options
       );
 
       console.log('\n=== Generating Response ===');

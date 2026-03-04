@@ -127,7 +127,7 @@ For questions: Give direct answers, ensure understanding, prevent time waste
 Respond ONLY with the message text. No meta-commentary.`;
   },
 
-  buildUserPrompt(context, currentMessage, messageType, eodContext = null, userInfo = null, recentBotResponses = []) {
+  buildUserPrompt(context, currentMessage, messageType, eodContext = null, userInfo = null, recentBotResponses = [], options = {}) {
     let prompt = `## Recent Conversation Context
 
 ${context}
@@ -153,7 +153,20 @@ Avoid repeating the same questions, reminders, or follow-up points listed above.
       console.log(`🔁 Deduplication: injecting ${recentBotResponses.length} previous responses to avoid repetition`);
     }
     
-    if (userInfo) {
+    if (options.isLeadDirective) {
+      prompt += `## Context: Lead Directive to Team
+
+A lead/manager just posted a @here message giving instructions to the entire team. Your role here is:
+- Appreciate and reinforce what the lead said — do NOT talk back to the lead as if they need help
+- Address the TEAM (use <!here> or general "team" language), not the sender
+- Add weight and urgency to the directive: echo the importance, add accountability
+- Keep it short (1-2 sentences max) — do not repeat every detail the lead already said
+- Example tone: "Team, take note of what Pavan shared above. Make sure ClickUp is updated and tasks are moved correctly before EOD."
+
+Do NOT start with the lead's @mention. Address the team.
+
+`;
+    } else if (userInfo) {
       const userMention = `<@${userInfo.id}>`;
       prompt += `## Recipient Information\n\n`;
       prompt += `User mention: ${userMention}\n\n`;
@@ -199,9 +212,9 @@ Avoid repeating the same questions, reminders, or follow-up points listed above.
     return prompt;
   },
 
-  async buildFullPrompt(context, currentMessage, messageType, userId, eodContext = null, userInfo = null, channelId = null, recentBotResponses = []) {
+  async buildFullPrompt(context, currentMessage, messageType, userId, eodContext = null, userInfo = null, channelId = null, recentBotResponses = [], options = {}) {
     const systemPrompt = await this.buildSystemPrompt(userId, channelId);
-    const userPrompt = this.buildUserPrompt(context, currentMessage, messageType, eodContext, userInfo, recentBotResponses);
+    const userPrompt = this.buildUserPrompt(context, currentMessage, messageType, eodContext, userInfo, recentBotResponses, options);
     
     return {
       system: systemPrompt,

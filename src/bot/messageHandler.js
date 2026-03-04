@@ -161,7 +161,37 @@ export const messageHandler = {
       const messageType = contextBuilder.detectMessageType(message.text);
       const isEODUpdate = messageType === 'eod_update';
       const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId) || isQuestionInThread;
-      
+
+      // Detect program manager (Phani) messages — respond differently
+      const PHANI_USER_ID = 'U09KQK8V7ST';
+      const isProgramManager = message.user === PHANI_USER_ID;
+
+      // Detect lead @here directives (Eric or Pavan posting team-wide instructions)
+      const LEAD_USER_IDS = [
+        config.obiTeam.ericUserId,
+        config.obiTeam.pavanUserId,
+      ].filter(Boolean);
+      const isLeadDirective = (
+        LEAD_USER_IDS.includes(message.user) &&
+        message.text &&
+        (message.text.includes('<!here>') || message.text.includes('@here')) &&
+        !message.thread_ts // only top-level posts, not thread replies
+      );
+
+      if (isLeadDirective) {
+        console.log(`👆 Lead directive detected from ${message.user} - reacting with 👍 and reinforcing to team`);
+        try {
+          await client.reactions.add({
+            channel: message.channel,
+            name: 'thumbsup',
+            timestamp: message.ts,
+          });
+        } catch (err) {
+          console.error('⚠️ Could not add thumbsup reaction:', err.message);
+        }
+        // Fall through to generate a team-reinforcing response
+      }
+
       // Skip Antony's messages unless they're questions in bot threads
       if (message.user === config.target.userId && !isQuestionInThread) {
         return;
@@ -205,7 +235,7 @@ export const messageHandler = {
         console.log('Could not fetch user info:', error.message);
       }
       
-      const result = await responseGenerator.generateResponse(message, userInfo);
+      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager });
       
       const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
       
