@@ -153,7 +153,26 @@ Avoid repeating the same questions, reminders, or follow-up points listed above.
       console.log(`🔁 Deduplication: injecting ${recentBotResponses.length} previous responses to avoid repetition`);
     }
     
-    if (options.isLeadDirective) {
+    if (options.isProgramManager) {
+      const userMention = userInfo ? `<@${userInfo.id}>` : `<@U09KQK8V7ST>`;
+      prompt += `## Context: Program Manager (Phani Kumar)
+
+The person you are responding to is M.D. Phani Kumar, the Program Manager. His job is program-level oversight — ensuring the entire team is on track, tasks are being completed, and nothing is falling through the cracks. He does NOT do the individual technical tasks himself.
+
+Your response to Phani must:
+- Start with ${userMention}
+- Treat him as a peer manager, NOT as a team member needing task reminders
+- Acknowledge what he said and give him useful oversight-level information
+- If the team is on track: reassure him that things are moving, updates will come through
+- If there is something the team has NOT addressed or reported: flag that for Phani so he can follow up
+- If Phani makes a note (e.g. "Noted"): acknowledge briefly and add relevant oversight context he may have missed
+- Do NOT tell Phani to update ClickUp, seek help after 45 mins, or any task-execution instructions
+- Be brief and informative — 1-3 sentences max
+
+Example good response: "${userMention} Noted. Deepthi and Pranati are marked WFH — I'll make sure their task progress is tracked and flagged if anything falls behind."
+
+`;
+    } else if (options.isLeadDirective) {
       prompt += `## Context: Lead Directive to Team
 
 A lead/manager just posted a @here message giving instructions to the entire team. Your role here is:
