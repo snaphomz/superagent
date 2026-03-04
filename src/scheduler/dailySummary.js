@@ -115,8 +115,17 @@ export const dailySummary = {
     try {
       console.log('📊 Generating daily summary...');
       
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const istHour = nowIST.getHours();
+
+      // If running before 6 AM IST, Jibble data is from yesterday (previous workday)
+      // The EOD/OBI data is still from today's calendar date in the DB
+      const jibbleDate = istHour < 6
+        ? new Date(nowIST.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+
       const today = new Date().toISOString().split('T')[0];
-      console.log(`📅 Date: ${today}`);
+      console.log(`📅 Date: ${today} (Jibble date: ${jibbleDate})`);
 
       // Generate channel digests for both target + OBI channels
       console.log('📰 Generating channel digests...');
@@ -133,7 +142,7 @@ export const dailySummary = {
       let strikeData = [];
       let weeklyStrikeData = [];
       try {
-        strikeData = await strikeEvaluator.getTodayStrikes(today);
+        strikeData = await strikeEvaluator.getTodayStrikes(jibbleDate);
         weeklyStrikeData = await strikeEvaluator.getWeeklyStrikeSummary();
         console.log(`✅ Strike data fetched: ${strikeData.length} strikes today`);
       } catch (strikeErr) {
@@ -142,7 +151,7 @@ export const dailySummary = {
       
       // Generate all sections
       console.log('⏰ Generating Jibble section...');
-      const jibbleReport = await this.generateJibbleSection(today);
+      const jibbleReport = await this.generateJibbleSection(jibbleDate);
       console.log(`   Found ${jibbleReport.length} Jibble attendance records`);
       
       console.log('🚀 Generating OBI section...');
@@ -153,12 +162,13 @@ export const dailySummary = {
       const eodReport = await this.generateEODSection(today);
       console.log(`   EOD summary: ${eodReport.summary}`);
       
-      // Build base Slack blocks
+      // Build base Slack blocks — use jibbleDate as the report date (may be yesterday)
+      const reportDate = jibbleDate;
       console.log('🔨 Building Slack blocks...');
-      const baseBlocks = this.buildSummaryBlocks(today, jibbleReport, obiReport, eodReport);
+      const baseBlocks = this.buildSummaryBlocks(reportDate, jibbleReport, obiReport, eodReport);
 
       // Build strike blocks (manager-only section)
-      const strikeBlocks = this.buildStrikeBlocks(today, strikeData, weeklyStrikeData);
+      const strikeBlocks = this.buildStrikeBlocks(reportDate, strikeData, weeklyStrikeData);
       const managerBlocks = [...baseBlocks, ...strikeBlocks];
 
       console.log(`   Created ${baseBlocks.length} base blocks + ${strikeBlocks.length} strike blocks`);
@@ -168,7 +178,7 @@ export const dailySummary = {
       try {
         await slackClient.chat.postMessage({
           channel: PHANI_KUMAR_ID,
-          text: `Daily Summary - ${today}`,
+          text: `Daily Summary - ${reportDate}`,
           blocks: managerBlocks,
         });
         console.log('✅ Sent to Phani Kumar');
@@ -181,7 +191,7 @@ export const dailySummary = {
       try {
         await slackClient.chat.postMessage({
           channel: ANTONY_ID,
-          text: `Daily Summary - ${today}`,
+          text: `Daily Summary - ${reportDate}`,
           blocks: managerBlocks,
         });
         console.log('✅ Sent to Antony');
