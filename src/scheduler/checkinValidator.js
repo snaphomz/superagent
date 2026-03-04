@@ -77,65 +77,114 @@ export const checkinValidator = {
 
       const threadMessages = replies.messages.slice(1); // Skip the parent message
 
-      // Process each response
+      // Build a set of user IDs who have already been clarification-pinged this run
+      const clarificationSentThisRun = new Set();
+
+      // Process each response — collect latest message per user first
+      const latestPerUser = {};
       for (const msg of threadMessages) {
-        if (msg.bot_id) continue; // Skip bot messages
-
-        const userId = msg.user;
-        const checkin = await messageStore.getCheckinByDate(today, userId);
-
-        if (!checkin || checkin.response_complete) continue;
-
-        // Validate the response
-        const validation = responseValidator.validateResponse(msg.text);
-
-        // Update checkin with parsed data
-        await messageStore.saveCheckin({
-          date: today,
-          userId: userId,
-          morningMessageTs: morningMessageTs,
-          morningResponseAt: new Date(parseFloat(msg.ts) * 1000).toISOString(),
-          morningResponseText: msg.text,
-          planningDone: validation.parsedData?.planningDone || false,
-          planningDetails: validation.parsedData?.planningDetails,
-          discussedWithLead: validation.parsedData?.discussedWithLead || false,
-          leadName: validation.parsedData?.leadName,
-          redditEngaged: validation.parsedData?.redditEngaged || false,
-          redditDetails: validation.parsedData?.redditDetails,
-          tasksFinalized: validation.parsedData?.tasksFinalized || false,
-          taskDetails: validation.parsedData?.taskDetails,
-          responseComplete: validation.isComplete,
-          responseSpecific: validation.isSpecific,
-          pingCount: checkin.ping_count || 0,
-          lastPingAt: checkin.last_ping_at,
-          codePushReminderSentAt: checkin.code_push_reminder_sent_at,
-          codePushAcknowledgedAt: checkin.code_push_acknowledged_at,
-          eodUpdateReceivedAt: checkin.eod_update_received_at,
-        });
-
-        // Send clarification if needed
-        if (!validation.isValid) {
-          let clarificationMsg;
-          if (validation.missingItems.length > 0 || validation.vagueItems.length > 0) {
-            clarificationMsg = responseValidator.generateClarificationMessage(userId, validation);
-          } else {
-            clarificationMsg = responseValidator.generateVagueResponseMessage(userId);
-          }
-
-          await slackClient.chat.postMessage({
-            channel: config.target.channelId,
-            text: clarificationMsg,
-            thread_ts: morningMessageTs,
-          });
-
-          console.log(`📨 Sent clarification request to ${userId}`);
-        } else {
-          console.log(`✅ Valid response from ${userId}`);
+        if (msg.bot_id) continue;
+        if (!msg.user) continue;
+        // Keep the latest message per user
+        if (!latestPerUser[msg.user] || parseFloat(msg.ts) > parseFloat(latestPerUser[msg.user].ts)) {
+          latestPerUser[msg.user] = msg;
         }
       }
 
-      // Ping non-responders
-      await this.pingNonResponders(today, morningMessageTs);
+      for (const [userId, msg] of Object.entries(latestPerUser)) {
+        const checkin = await messageStore.getCheckinByDate(today, userId);
+        if (!checkin) continue;
+
+        const responseText = msg.text || '';
+        const hasFiles = msg.files && msg.files.length > 0;
+        const hasAttachments = msg.attachments && msg.attachments.length > 0;
+        const hasContent = responseText.trim().length > 0 || hasFiles || hasAttachments;
+
+        // Always mark as responded if they replied at all — stops pinging
+        if (!checkin.morning_response_at && hasContent) {
+          const responseAt = new Date(parseFloat(msg.ts) * 1000).toISOString();
+
+          if (!responseText.trim() || responseText.trim().length < 10) {
+            // File/image only or very short — count as responded, skip clarification
+            await messageStore.saveCheckin({
+              date: today,
+              userId,
+              morningMessageTs,
+              morningResponseAt: responseAt,
+              morningResponseText: responseText || '[file/task shared]',
+              planningDone: false,
+              planningDetails: null,
+              discussedWithLead: false,
+              leadName: null,
+              redditEngaged: false,
+              redditDetails: null,
+              tasksFinalized: true, // they shared tasks, count it
+              taskDetails: 'Shared via file/attachment',
+              responseComplete: false,
+              responseSpecific: false,
+              pingCount: checkin.ping_count || 0,
+              lastPingAt: checkin.last_ping_at,
+              codePushReminderSentAt: checkin.code_push_reminder_sent_at,
+              codePushAcknowledgedAt: checkin.code_push_acknowledged_at,
+              eodUpdateReceivedAt: checkin.eod_update_received_at,
+            });
+            console.log(`📎 Marked ${userId} as responded (file/task share)`);
+            continue;
+          }
+
+          if (checkin.response_complete) {
+            console.log(`⏭️  ${userId} already marked complete`);
+            continue;
+          }
+
+          // Validate text response
+          const validation = responseValidator.validateResponse(responseText);
+
+          await messageStore.saveCheckin({
+            date: today,
+            userId,
+            morningMessageTs,
+            morningResponseAt: responseAt,
+            morningResponseText: responseText,
+            planningDone: validation.parsedData?.planningDone || false,
+            planningDetails: validation.parsedData?.planningDetails,
+            discussedWithLead: validation.parsedData?.discussedWithLead || false,
+            leadName: validation.parsedData?.leadName,
+            redditEngaged: validation.parsedData?.redditEngaged || false,
+            redditDetails: validation.parsedData?.redditDetails,
+            tasksFinalized: validation.parsedData?.tasksFinalized || false,
+            taskDetails: validation.parsedData?.taskDetails,
+            responseComplete: validation.isComplete,
+            responseSpecific: validation.isSpecific,
+            pingCount: checkin.ping_count || 0,
+            lastPingAt: checkin.last_ping_at,
+            codePushReminderSentAt: checkin.code_push_reminder_sent_at,
+            codePushAcknowledgedAt: checkin.code_push_acknowledged_at,
+            eodUpdateReceivedAt: checkin.eod_update_received_at,
+          });
+
+          // Send clarification only once per user per run
+          if (!validation.isValid && !clarificationSentThisRun.has(userId)) {
+            let clarificationMsg;
+            if (validation.missingItems.length > 0 || validation.vagueItems.length > 0) {
+              clarificationMsg = responseValidator.generateClarificationMessage(userId, validation);
+            } else {
+              clarificationMsg = responseValidator.generateVagueResponseMessage(userId);
+            }
+
+            await slackClient.chat.postMessage({
+              channel: config.target.channelId,
+              text: clarificationMsg,
+              thread_ts: morningMessageTs,
+            });
+
+            clarificationSentThisRun.add(userId);
+            console.log(`📨 Sent clarification request to ${userId}`);
+          } else if (validation.isValid) {
+            console.log(`✅ Valid response from ${userId}`);
+          }
+        }
+      }
 
       console.log('✅ Validation complete');
     } catch (error) {
@@ -162,8 +211,8 @@ export const checkinValidator = {
           continue;
         }
 
-        // Skip if already responded
-        if (checkin.morning_response_at) {
+        // Skip if already responded or marked complete
+        if (checkin.morning_response_at || checkin.response_complete) {
           console.log(`⏭️  User already responded: ${checkin.user_id}`);
           continue;
         }
