@@ -211,7 +211,7 @@ Do NOT start with the lead's @mention. Address the team.
         }
         
         if (eodContext.analysis.issues.includes('no_next_day_plan')) {
-          prompt += `- No next-day tasks mentioned - ask about tomorrow's priorities and clarity\n`;
+          prompt += `- No next-day plan shared yet. Give a soft nudge: acknowledge the good work today, then let them know you are waiting for their plan for tomorrow. The tone should be gentle but clear — they should drop their tomorrow's plan/tasks before they start their new workday. Something like: "Good work today. I'm waiting on your plan for tomorrow — share it before you kick off your day so we're aligned from the start."\n`;
         }
         
         if (eodContext.analysis.issues.includes('missing_purpose') || 
