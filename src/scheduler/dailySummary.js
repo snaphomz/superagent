@@ -250,10 +250,11 @@ export const dailySummary = {
   async generateOBISection(date) {
     try {
       // Get OBI channel messages for the day
+      // timestamp column is Slack epoch TEXT (e.g. "1741234567.123456"), use to_timestamp()
       const query = `
         SELECT * FROM messages
         WHERE channel_id = 'C08UM4WCYAZ'
-          AND DATE(timestamp::timestamp) = $1
+          AND DATE(to_timestamp(timestamp::double precision) AT TIME ZONE 'Asia/Kolkata') = $1::date
         ORDER BY timestamp ASC
       `;
       
@@ -356,49 +357,62 @@ Format as JSON:
 
   async generateEODSection(date) {
     try {
-      // Get all EOD updates for the day
+      // Query actual EOD messages from the messages table for the target channel
+      // EOD updates are messages containing Purpose/Process/Payoff or "Update:" patterns
+      // timestamp is Slack epoch TEXT, convert with to_timestamp()
       const query = `
-        SELECT 
+        SELECT DISTINCT ON (user_id)
           user_id,
-          morning_response_text,
-          planning_details,
-          task_details,
-          reddit_details
-        FROM daily_checkins
-        WHERE date = $1
-          AND morning_response_text IS NOT NULL
-        ORDER BY morning_response_at ASC
+          text,
+          timestamp
+        FROM messages
+        WHERE channel_id = $2
+          AND DATE(to_timestamp(timestamp::double precision) AT TIME ZONE 'Asia/Kolkata') = $1::date
+          AND thread_ts IS NULL
+          AND (
+            text ILIKE '%purpose%'
+            OR text ILIKE '%process%'
+            OR text ILIKE '%payoff%'
+            OR text ILIKE '%update:%'
+            OR text ILIKE '%today%tasks%'
+            OR text ILIKE '%eod%'
+          )
+          AND LENGTH(text) > 50
+        ORDER BY user_id, timestamp DESC
       `;
-      
-      const result = await db.query(query, [date]);
-      const eodUpdates = result.rows;
-      
-      if (eodUpdates.length === 0) {
+
+      const result = await db.query(query, [date, config.target.channelId]);
+      const eodMessages = result.rows;
+
+      if (eodMessages.length === 0) {
         return { summary: 'No EOD updates today', items: [], redFlags: [], analysis: 'No updates to analyze' };
       }
-      
+
       // Get team member names
       const teamQuery = `
         SELECT user_id, display_name, real_name
         FROM team_members
         WHERE user_id = ANY($1)
       `;
-      
-      const userIds = eodUpdates.map(u => u.user_id);
+
+      const userIds = eodMessages.map(u => u.user_id);
       const teamResult = await db.query(teamQuery, [userIds]);
       const teamMembers = teamResult.rows;
-      
-      const items = eodUpdates.map(update => {
-        const member = teamMembers.find(m => m.user_id === update.user_id);
-        const name = member?.display_name || member?.real_name || update.user_id;
-        
+
+      const { eodDetector } = await import('../utils/eodDetector.js');
+
+      const items = eodMessages.map(msg => {
+        const member = teamMembers.find(m => m.user_id === msg.user_id);
+        const name = member?.display_name || member?.real_name || msg.user_id;
+        const eodData = eodDetector.extractUpdateComponents(msg.text);
+
         return {
           user: name,
-          userId: update.user_id,
-          update: update.morning_response_text,
-          planning: update.planning_details,
-          tasks: update.task_details,
-          reddit: update.reddit_details
+          userId: msg.user_id,
+          update: msg.text,
+          purpose: eodData?.purpose || null,
+          process: eodData?.process || null,
+          payoff: eodData?.payoff || null,
         };
       });
       
@@ -406,7 +420,7 @@ Format as JSON:
       const analysis = await this.analyzeEODUpdates(items);
       
       return {
-        summary: `${eodUpdates.length} team members provided EOD updates`,
+        summary: `${items.length} team members provided EOD updates`,
         items: items,
         redFlags: analysis.redFlags,
         insights: analysis.insights,
