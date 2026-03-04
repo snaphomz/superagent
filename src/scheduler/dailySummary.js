@@ -118,14 +118,16 @@ export const dailySummary = {
       const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
       const istHour = nowIST.getHours();
 
-      // If running before 6 AM IST, Jibble data is from yesterday (previous workday)
-      // The EOD/OBI data is still from today's calendar date in the DB
-      const jibbleDate = istHour < 6
-        ? new Date(nowIST.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
+      // Always use IST-based date strings to avoid UTC offset issues
+      const todayIST = nowIST.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
 
-      const today = new Date().toISOString().split('T')[0];
-      console.log(`📅 Date: ${today} (Jibble date: ${jibbleDate})`);
+      // If running before 6 AM IST, Jibble data is from yesterday (previous workday)
+      const yesterdayIST = new Date(nowIST.getTime() - 24 * 60 * 60 * 1000)
+        .toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const jibbleDate = istHour < 6 ? yesterdayIST : todayIST;
+
+      const today = todayIST;
+      console.log(`📅 Date: ${today} (Jibble date: ${jibbleDate}, IST hour: ${istHour})`);
 
       // Generate channel digests for both target + OBI channels
       console.log('📰 Generating channel digests...');
@@ -314,7 +316,9 @@ Format as JSON:
         max_tokens: 800
       });
       
-      const analysis = JSON.parse(response.choices[0].message.content);
+      const rawObi = response.choices[0].message.content.trim()
+        .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const analysis = JSON.parse(rawObi);
       
       const items = [];
       if (analysis.keyUpdates && analysis.keyUpdates.length > 0) {
@@ -477,7 +481,10 @@ Focus on:
         max_tokens: 1000
       });
       
-      const analysis = JSON.parse(response.choices[0].message.content);
+      // Strip markdown code fences if present before parsing
+      const raw = response.choices[0].message.content.trim()
+        .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const analysis = JSON.parse(raw);
       return analysis;
       
     } catch (error) {
@@ -593,7 +600,7 @@ Focus on:
 
     blocks.push({ type: 'divider' });
 
-    // Individual EOD Updates (collapsed)
+    // Individual EOD Updates — structured summary only, no raw text
     blocks.push({
       type: 'section',
       text: {
@@ -604,26 +611,17 @@ Focus on:
 
     if (eodReport.items && eodReport.items.length > 0) {
       eodReport.items.forEach(item => {
-        let updateText = `*<@${item.userId}>*\n`;
-        
-        if (item.update) {
-          updateText += `• Update: ${item.update.substring(0, 200)}${item.update.length > 200 ? '...' : ''}\n`;
+        const lines = [`*<@${item.userId}>*`];
+        if (item.purpose) lines.push(`• *Purpose:* ${item.purpose.substring(0, 120)}${item.purpose.length > 120 ? '...' : ''}`);
+        if (item.process) lines.push(`• *Process:* ${item.process.substring(0, 120)}${item.process.length > 120 ? '...' : ''}`);
+        if (item.payoff) lines.push(`• *Payoff:* ${item.payoff.substring(0, 120)}${item.payoff.length > 120 ? '...' : ''}`);
+        // Fallback if no structured fields parsed
+        if (!item.purpose && !item.process && !item.payoff && item.update) {
+          lines.push(`• ${item.update.substring(0, 150)}${item.update.length > 150 ? '...' : ''}`);
         }
-        
-        if (item.tasks) {
-          updateText += `• Tasks: ${item.tasks}\n`;
-        }
-        
-        if (item.planning) {
-          updateText += `• Planning: ${item.planning}\n`;
-        }
-
         blocks.push({
           type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: updateText
-          }
+          text: { type: 'mrkdwn', text: lines.join('\n') }
         });
       });
     }
