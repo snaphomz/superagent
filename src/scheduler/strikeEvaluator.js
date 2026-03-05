@@ -58,7 +58,8 @@ export const strikeEvaluator = {
     strikeJob = cron.schedule(
       '30 21 * * 1-6',
       async () => {
-        const today = new Date().toISOString().split('T')[0];
+        const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+        const today = nowIST.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
         console.log(`⚡ Strike evaluator running for ${today}...`);
         await this.evaluateDay(today);
       },
@@ -71,9 +72,12 @@ export const strikeEvaluator = {
 
   async evaluateDay(date) {
     try {
-      // Get all non-exempt team members
+      // Get all non-exempt team members, excluding managers (Antony, Phani)
       const result = await db.query(
-        `SELECT user_id, display_name, real_name FROM team_members WHERE exempt_from_eod = 0`
+        `SELECT user_id, display_name, real_name FROM team_members
+         WHERE exempt_from_eod = 0
+           AND user_id NOT IN ($1, $2)`,
+        [ANTONY_ID, PHANI_ID]
       );
       const members = result.rows;
 
@@ -122,12 +126,23 @@ export const strikeEvaluator = {
         strikes.push({ type: 'no_eod', details: 'No EOD update submitted' });
         console.log(`⚡ ${name}: Strike - no_eod`);
       } else {
-        // Strike 2: EOD quality score < 4
-        const eodTextResult = await db.query(
-          `SELECT morning_response_text FROM daily_checkins WHERE date = $1 AND user_id = $2`,
-          [date, userId]
+        // Strike 2: EOD quality — fetch the actual EOD message from the messages table
+        const eodMsgResult = await db.query(
+          `SELECT text FROM messages
+           WHERE user_id = $1
+             AND channel_id = $2
+             AND DATE(to_timestamp(timestamp::double precision) AT TIME ZONE 'Asia/Kolkata') = $3::date
+             AND thread_ts IS NULL
+             AND (
+               text ILIKE '%purpose%' OR text ILIKE '%process%' OR text ILIKE '%payoff%'
+               OR text ILIKE '%update:%' OR text ILIKE '%updates:%' OR text ILIKE '%eod%'
+             )
+             AND LENGTH(text) > 50
+           ORDER BY timestamp DESC
+           LIMIT 1`,
+          [userId, config.target.channelId, date]
         );
-        const eodText = eodTextResult.rows[0]?.morning_response_text;
+        const eodText = eodMsgResult.rows[0]?.text;
         if (eodText) {
           const score = await this.scoreEODQuality(eodText);
           console.log(`⚡ ${name}: EOD quality score = ${score}/10`);
@@ -278,12 +293,12 @@ Reply with only the integer score (0-10):`
 
   async rollupWeekly(date, members) {
     try {
-      const d = new Date(date);
+      const d = new Date(date + 'T00:00:00+05:30'); // parse as IST
       const dayOfWeek = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
       const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const monday = new Date(d);
       monday.setDate(d.getDate() - daysFromMonday);
-      const weekStart = monday.toISOString().split('T')[0];
+      const weekStart = monday.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
       const flagged = [];
 
@@ -378,12 +393,13 @@ Reply with only the integer score (0-10):`
 
   async getWeeklyStrikeSummary() {
     try {
-      const d = new Date();
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const d = nowIST;
       const dayOfWeek = d.getDay();
       const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const monday = new Date(d);
       monday.setDate(d.getDate() - daysFromMonday);
-      const weekStart = monday.toISOString().split('T')[0];
+      const weekStart = monday.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
       const result = await db.query(
         `SELECT ws.user_id, ws.total_strikes, ws.strike_breakdown, ws.escalated, ws.week_start,

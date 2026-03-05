@@ -13,7 +13,11 @@ export const eodSummary = {
 
   async trackEODUpdate(message) {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Only track EOD updates from the target channel
+      if (message.channel !== config.target.channelId) return;
+
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const today = nowIST.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const userId = message.user;
 
       // Check if this is an EOD update
@@ -23,32 +27,30 @@ export const eodSummary = {
       // Extract EOD components
       const eodData = eodDetector.extractUpdateComponents(message.text);
 
-      // Update checkin record
+      // Update checkin record — create a minimal row if one doesn't exist
       const checkin = await messageStore.getCheckinByDate(today, userId);
-      if (checkin) {
-        await messageStore.saveCheckin({
-          date: today,
-          userId: userId,
-          morningMessageTs: checkin.morning_message_ts,
-          morningResponseAt: checkin.morning_response_at,
-          morningResponseText: checkin.morning_response_text,
-          planningDone: checkin.planning_done,
-          planningDetails: checkin.planning_details,
-          discussedWithLead: checkin.discussed_with_lead,
-          leadName: checkin.lead_name,
-          redditEngaged: checkin.reddit_engaged,
-          redditDetails: checkin.reddit_details,
-          tasksFinalized: checkin.tasks_finalized,
-          taskDetails: checkin.task_details,
-          responseComplete: checkin.response_complete,
-          responseSpecific: checkin.response_specific,
-          pingCount: checkin.ping_count,
-          lastPingAt: checkin.last_ping_at,
-          codePushReminderSentAt: checkin.code_push_reminder_sent_at,
-          codePushAcknowledgedAt: checkin.code_push_acknowledged_at,
-          eodUpdateReceivedAt: new Date().toISOString(),
-        });
-      }
+      await messageStore.saveCheckin({
+        date: today,
+        userId: userId,
+        morningMessageTs: checkin?.morning_message_ts || null,
+        morningResponseAt: checkin?.morning_response_at || null,
+        morningResponseText: checkin?.morning_response_text || null,
+        planningDone: checkin?.planning_done || false,
+        planningDetails: checkin?.planning_details || null,
+        discussedWithLead: checkin?.discussed_with_lead || false,
+        leadName: checkin?.lead_name || null,
+        redditEngaged: checkin?.reddit_engaged || false,
+        redditDetails: checkin?.reddit_details || null,
+        tasksFinalized: checkin?.tasks_finalized || false,
+        taskDetails: checkin?.task_details || null,
+        responseComplete: checkin?.response_complete || false,
+        responseSpecific: checkin?.response_specific || false,
+        pingCount: checkin?.ping_count || 0,
+        lastPingAt: checkin?.last_ping_at || null,
+        codePushReminderSentAt: checkin?.code_push_reminder_sent_at || null,
+        codePushAcknowledgedAt: checkin?.code_push_acknowledged_at || null,
+        eodUpdateReceivedAt: new Date().toISOString(),
+      });
 
       // Cache EOD update
       const cacheKey = `${today}:${userId}`;
