@@ -8,6 +8,7 @@ import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { hydrationReminder } from '../scheduler/hydrationReminder.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { dailyCheckin } from '../scheduler/dailyCheckin.js';
+import { setScheduleException } from '../scheduler/checkinValidator.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -67,6 +68,14 @@ export const messageHandler = {
           } catch (fileErr) {
             console.error('⚠️ Could not save file annotation:', fileErr.message);
           }
+        }
+      }
+
+      // Parse Note: messages from Antony for schedule exceptions (late start, WFH)
+      if (message.user === config.target.userId && message.text) {
+        const noteText = message.text;
+        if (/^note[:\s]/i.test(noteText.trim())) {
+          await this.parseScheduleNote(noteText, client);
         }
       }
 
@@ -403,6 +412,46 @@ export const messageHandler = {
       await messageStore.saveTeamMember(userInfo);
     } catch (error) {
       console.error('Error updating team member:', error);
+    }
+  },
+
+  async parseScheduleNote(noteText, client) {
+    try {
+      // Extract all mentioned user IDs from the note: <@U12345>
+      const mentionRegex = /<@([A-Z0-9]+)>/g;
+      let match;
+      const mentionedUsers = [];
+      while ((match = mentionRegex.exec(noteText)) !== null) {
+        mentionedUsers.push(match[1]);
+      }
+
+      if (mentionedUsers.length === 0) return;
+
+      // Detect late start time: "start work after 6 PM", "starts at 6pm", "6 PM start"
+      const lateStartMatch = noteText.match(/(?:start(?:s)?\s+(?:work\s+)?(?:after|at)\s+|after\s+)(\d{1,2})\s*(?:PM|pm|AM|am)?/i);
+      let lateStartHour = null;
+      if (lateStartMatch) {
+        lateStartHour = parseInt(lateStartMatch[1]);
+        // Assume PM if hour <= 11 and context says PM or typical working hours
+        if (lateStartHour < 12 && /pm/i.test(lateStartMatch[0])) {
+          lateStartHour += 12;
+        }
+      }
+
+      // Detect WFH (working from home — treat as normal working hours, no late start)
+      const isWFH = /\bwfh\b/i.test(noteText);
+
+      for (const userId of mentionedUsers) {
+        if (lateStartHour) {
+          setScheduleException(userId, { lateStart: lateStartHour, wfh: isWFH });
+          console.log(`📋 Note parsed: ${userId} has late start at ${lateStartHour}:00 IST`);
+        } else if (isWFH) {
+          // WFH only — no ping change needed, just log
+          console.log(`📋 Note parsed: ${userId} is WFH today (normal schedule)`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error parsing schedule note:', error);
     }
   },
 };

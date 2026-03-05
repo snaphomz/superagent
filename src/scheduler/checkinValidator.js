@@ -3,6 +3,19 @@ import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
 import { responseValidator } from '../utils/responseValidator.js';
 
+// In-memory store for schedule exceptions parsed from Antony's Note: messages
+// Format: { userId: { lateStart: 18 } }  (lateStart = IST hour they start work)
+export const scheduleExceptions = new Map();
+
+export function setScheduleException(userId, exception) {
+  scheduleExceptions.set(userId, exception);
+  console.log(`📋 Schedule exception set for ${userId}:`, exception);
+}
+
+export function clearScheduleExceptions() {
+  scheduleExceptions.clear();
+}
+
 let validationJob = null;
 let pingJob = null;
 let slackClient = null;
@@ -55,7 +68,8 @@ export const checkinValidator = {
     try {
       console.log('\n🔍 Validating morning check-in responses...');
 
-      const today = new Date().toISOString().split('T')[0];
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const today = nowIST.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const checkins = await messageStore.getTodayCheckins(today);
 
       if (checkins.length === 0) {
@@ -77,17 +91,48 @@ export const checkinValidator = {
 
       const threadMessages = replies.messages.slice(1); // Skip the parent message
 
+      // Also scan recent channel messages (last 3 hours) for task posts not in thread
+      // Members often post "Todays tasks:" directly in channel instead of replying to thread
+      let channelMessages = [];
+      try {
+        const threeHoursAgo = String(Math.floor(Date.now() / 1000) - 3 * 60 * 60);
+        const channelHistory = await slackClient.conversations.history({
+          channel: config.target.channelId,
+          oldest: threeHoursAgo,
+          limit: 100,
+        });
+        channelMessages = (channelHistory.messages || []).filter(m => !m.bot_id && m.user && !m.thread_ts);
+      } catch (err) {
+        console.error('⚠️ Could not fetch channel history for check-in scan:', err.message);
+      }
+
       // Build a set of user IDs who have already been clarification-pinged this run
       const clarificationSentThisRun = new Set();
 
-      // Process each response — collect latest message per user first
+      // Collect latest message per user from thread replies first, then channel messages
       const latestPerUser = {};
       for (const msg of threadMessages) {
         if (msg.bot_id) continue;
         if (!msg.user) continue;
-        // Keep the latest message per user
         if (!latestPerUser[msg.user] || parseFloat(msg.ts) > parseFloat(latestPerUser[msg.user].ts)) {
           latestPerUser[msg.user] = msg;
+        }
+      }
+      // Channel messages fill in for users who haven't replied in thread
+      for (const msg of channelMessages) {
+        if (msg.bot_id) continue;
+        if (!msg.user) continue;
+        const hasTaskKeywords = msg.text && (
+          /today.{0,10}tasks?/i.test(msg.text) ||
+          /todays tasks/i.test(msg.text) ||
+          /my tasks/i.test(msg.text) ||
+          /working on/i.test(msg.text) ||
+          msg.text.length > 80
+        );
+        if (!hasTaskKeywords) continue;
+        // Only use channel message if no thread reply exists for this user
+        if (!latestPerUser[msg.user]) {
+          latestPerUser[msg.user] = { ...msg, _fromChannel: true };
         }
       }
 
@@ -198,6 +243,9 @@ export const checkinValidator = {
       const freelancerIds = config.scheduler.freelancerIds || [];
       const excludedIds = config.scheduler.excludedUserIds || [];
 
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const currentISTHour = nowIST.getHours();
+
       for (const checkin of checkins) {
         // Skip freelancers
         if (freelancerIds.includes(checkin.user_id)) {
@@ -208,6 +256,13 @@ export const checkinValidator = {
         // Skip excluded users (Antony, Phani Kumar, Slackbot, Alfred, etc.)
         if (excludedIds.includes(checkin.user_id)) {
           console.log(`⏭️  Skipping excluded user: ${checkin.user_id}`);
+          continue;
+        }
+
+        // Skip if schedule exception: user has a late start and it's before their start hour
+        const exception = scheduleExceptions.get(checkin.user_id);
+        if (exception && exception.lateStart && currentISTHour < exception.lateStart) {
+          console.log(`⏭️  Skipping ${checkin.user_id} - late start at ${exception.lateStart}:00 IST (now ${currentISTHour}:00 IST)`);
           continue;
         }
 
@@ -250,17 +305,22 @@ export const checkinValidator = {
   async checkAndPingNonResponders() {
     try {
       // Get current time in IST
-      const now = new Date();
-      const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-      const currentHour = istTime.getHours();
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const currentHour = nowIST.getHours();
 
-      // Only ping between 10 AM and 5 PM IST
-      if (currentHour < 10 || currentHour >= 17) {
+      // Only ping between 10 AM and 7 PM IST (extended to catch late-start members)
+      if (currentHour < 10 || currentHour >= 19) {
         console.log(`⏭️  Skipping ping check - outside hours (current IST hour: ${currentHour})`);
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      // Clear yesterday's schedule exceptions at midnight IST
+      if (currentHour === 0) {
+        clearScheduleExceptions();
+        console.log('🧹 Cleared schedule exceptions for new day');
+      }
+
+      const today = nowIST.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const checkins = await messageStore.getTodayCheckins(today);
 
       if (checkins.length === 0) {
