@@ -23,13 +23,25 @@ export const responseGenerator = {
       
       let eodContext = null;
       let actualMessageType = messageType;
-      
-      if (messageType === 'eod_update') {
+
+      // Only run EOD follow-up logic on top-level channel messages, never on thread replies.
+      // Thread replies are responses to prior bot questions — re-running EOD detection on them
+      // causes the bot to ask the same question repeatedly.
+      const isThreadReply = !!message.thread_ts;
+
+      // Also detect if the user is pointing out they already answered
+      const alreadyAnswered = message.text && /already\s+(added|written|shared|put|included|mentioned|said|have it|stated|answered)|i\s+have\s+(added|written|shared|put|included)|in\s+(next\s+steps?|my\s+update|the\s+update)/i.test(message.text);
+
+      if (messageType === 'eod_update' && !isThreadReply) {
         eodContext = questionGenerator.getQuestionContext(message.text);
         
         if (eodContext.shouldEngage && eodContext.priority !== 'none') {
           actualMessageType = 'eod_followup';
         }
+      } else if (alreadyAnswered) {
+        // User is saying they already answered — treat as acknowledgement, not EOD follow-up
+        console.log('ℹ️ User indicated they already answered — skipping EOD follow-up');
+        actualMessageType = 'acknowledgement';
       }
       
       // Fetch last 5 bot responses in this channel to avoid repetition

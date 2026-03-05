@@ -62,7 +62,7 @@ export const eodDetector = {
     
     components.mentionsClickUp = /click\s*up|clickup/i.test(text);
     
-    components.mentionsNextDay = /tomorrow|next day|planning|upcoming|will work on/i.test(lowerText);
+    components.mentionsNextDay = /tomorrow|next day|planning|upcoming|will work on|next steps?[:\s]|steps?:|plan for|plans? for|planned for|following up|continue work/i.test(lowerText);
     
     components.mentionsTasks = /task|todo|to-do|action item/i.test(lowerText);
     
