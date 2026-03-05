@@ -1,6 +1,7 @@
 import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
 import { eodDetector } from '../utils/eodDetector.js';
+import { yesterdayIST } from '../utils/dateUtils.js';
 
 let slackClient = null;
 let eodUpdateCache = new Map(); // Track EOD updates per day
@@ -169,9 +170,7 @@ export const eodSummary = {
 
   // Clear old cache entries (run daily)
   clearOldCache() {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = yesterdayIST();
 
     for (const [key] of eodUpdateCache) {
       if (key.startsWith(yesterdayStr)) {

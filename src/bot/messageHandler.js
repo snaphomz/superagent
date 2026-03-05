@@ -10,6 +10,7 @@ import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { dailyCheckin } from '../scheduler/dailyCheckin.js';
 import { setScheduleException } from '../scheduler/checkinValidator.js';
 import { pendingQuestions } from '../utils/pendingQuestions.js';
+import { todayIST } from '../utils/dateUtils.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -98,7 +99,7 @@ export const messageHandler = {
       // Track morning check-in responses
       const morningCheckinTs = dailyCheckin.getMorningCheckinTs();
       if (morningCheckinTs && message.thread_ts === morningCheckinTs) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = todayIST();
         const checkin = await messageStore.getCheckinByDate(today, message.user);
         
         if (checkin && !checkin.morning_response_at) {

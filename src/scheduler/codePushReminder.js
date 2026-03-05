@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { todayIST } from '../utils/dateUtils.js';
 import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
 
@@ -53,7 +54,7 @@ Reply with your status!`;
       codePushMessageTs = result.ts;
 
       // Update all check-ins with reminder timestamp
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayIST();
       const checkins = await messageStore.getTodayCheckins(today);
 
       for (const checkin of checkins) {
@@ -89,7 +90,7 @@ Reply with your status!`;
 
   async trackAcknowledgment(userId, messageTs) {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayIST();
       const checkin = await messageStore.getCheckinByDate(today, userId);
 
       if (checkin && !checkin.code_push_acknowledged_at) {

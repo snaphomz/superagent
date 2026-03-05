@@ -6,6 +6,7 @@ import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { strikeEvaluator } from '../scheduler/strikeEvaluator.js';
 import { channelDigest } from '../ai/channelDigest.js';
+import { todayIST } from '../utils/dateUtils.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -28,7 +29,7 @@ export function createSlackBot() {
       }
       
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = todayIST();
         const summary = await jibbleMonitor.generateDailySummary(today);
         
         await client.chat.postMessage({
@@ -122,7 +123,7 @@ export function createSlackBot() {
             text: '⚡ Running strike evaluation now... check logs for details.',
           });
           strikeEvaluator.initialize(client);
-          const today = new Date().toISOString().split('T')[0];
+          const today = todayIST();
           const allStrikes = await strikeEvaluator.evaluateDay(today);
           const todayStrikes = await strikeEvaluator.getTodayStrikes(today);
           const weeklyData = await strikeEvaluator.getWeeklyStrikeSummary();
@@ -207,7 +208,7 @@ export function createSlackBot() {
       }
 
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = todayIST();
         await client.chat.postMessage({
           channel: ANTONY_USER_ID,
           text: '📰 Generating channel digests now...',

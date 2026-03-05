@@ -75,7 +75,7 @@ export const externalChannelFetcher = {
 
   async fetchInternalCheckins(date = null) {
     try {
-      const today = date || new Date().toISOString().split('T')[0];
+      const today = date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       console.log(`📋 Fetching internal check-ins for ${today}...`);
 
       const checkins = await messageStore.getTodayCheckins(today);

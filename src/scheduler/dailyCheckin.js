@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
+import { todayIST } from '../utils/dateUtils.js';
 
 let morningCheckinJob = null;
 let slackClient = null;
@@ -59,7 +60,7 @@ Time for your daily planning check-in. Please reply in thread with specific deta
 
       // Store the message timestamp for thread tracking
       morningCheckinMessageTs = result.ts;
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayIST();
       
       // Get all team members who should respond (non-freelancers and non-excluded)
       const allMembers = await messageStore.getTeamMembers();

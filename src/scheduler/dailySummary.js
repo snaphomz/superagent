@@ -37,7 +37,7 @@ export const dailySummary = {
 
   async checkAndSendSummary() {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       
       // Check if all required members have submitted EOD updates
       const allUpdatesComplete = await this.verifyAllEODUpdates(today);
