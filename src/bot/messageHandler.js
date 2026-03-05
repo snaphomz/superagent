@@ -244,7 +244,7 @@ export const messageHandler = {
         console.log('Could not fetch user info:', error.message);
       }
       
-      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager });
+      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client });
       
       const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
       

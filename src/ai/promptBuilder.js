@@ -224,6 +224,32 @@ Do NOT start with the lead's @mention. Address the team.
       }
       
       prompt += `Ask 1-2 specific, helpful questions to improve their update. Be supportive and constructive.\n\n`;
+    } else if (messageType === 'verified_acknowledgement') {
+      prompt += `The team member said they already included the information you asked about. You went back and re-read their original update to verify.\n\n`;
+
+      if (eodContext && eodContext.verifiedFromParent) {
+        const remaining = eodContext.analysis.issues;
+        const found = [];
+        if (eodContext.components.hasPurpose) found.push('Purpose');
+        if (eodContext.components.hasProcess) found.push('Process');
+        if (eodContext.components.hasPayoff) found.push('Payoff');
+        if (eodContext.components.mentionsNextDay) found.push('next-day plan / next steps');
+        if (eodContext.components.mentionsClickUp) found.push('ClickUp mention');
+
+        if (found.length > 0) {
+          prompt += `## What you verified is present:\n${found.map(f => `- ${f}`).join('\n')}\n\n`;
+        }
+
+        if (remaining.length === 0) {
+          prompt += `The update is complete. Confirm what you found and close out positively — no more questions needed.\n\n`;
+        } else {
+          const gaps = remaining.map(i => i.replace(/_/g, ' ')).join(', ');
+          prompt += `After re-checking, these items are still genuinely missing: ${gaps}.\n`;
+          prompt += `Acknowledge what they DID include (listed above), then gently note only what is still actually missing. Do NOT repeat questions about things that are already there.\n\n`;
+        }
+      } else {
+        prompt += `Acknowledge that you checked their update. Confirm you got it and close positively.\n\n`;
+      }
     }
     
     prompt += `Generate an appropriate response:`;

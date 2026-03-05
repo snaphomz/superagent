@@ -38,10 +38,44 @@ export const responseGenerator = {
         if (eodContext.shouldEngage && eodContext.priority !== 'none') {
           actualMessageType = 'eod_followup';
         }
-      } else if (alreadyAnswered) {
-        // User is saying they already answered — treat as acknowledgement, not EOD follow-up
-        console.log('ℹ️ User indicated they already answered — skipping EOD follow-up');
-        actualMessageType = 'acknowledgement';
+      } else if (alreadyAnswered && isThreadReply) {
+        // User is pointing back to content they already shared.
+        // Re-read the thread parent to verify what's actually there, then confirm specifically.
+        console.log('ℹ️ User says they already answered — re-checking thread parent to verify...');
+        actualMessageType = 'verified_acknowledgement';
+
+        try {
+          const threadInfo = await contextBuilder.client
+            ? null // not available here; use options.client below
+            : null;
+          // client is passed via options if available
+          if (options.client && message.thread_ts) {
+            const threadData = await options.client.conversations.replies({
+              channel: message.channel,
+              ts: message.thread_ts,
+              limit: 10,
+            });
+            // The parent message is always the first in the replies array
+            const parentMsg = threadData.messages?.[0];
+            if (parentMsg && parentMsg.text) {
+              const parentComponents = eodDetector.extractUpdateComponents(parentMsg.text);
+              const parentAnalysis = eodDetector.analyzeCompleteness(parentComponents);
+              // Build a verified context so the prompt can confirm what was found
+              eodContext = {
+                isEODUpdate: true,
+                components: parentComponents,
+                analysis: parentAnalysis,
+                shouldEngage: false,
+                priority: 'none',
+                verifiedFromParent: true,
+                parentText: parentMsg.text.substring(0, 600),
+              };
+              console.log(`✅ Verified parent EOD. Remaining issues: ${parentAnalysis.issues.join(', ') || 'none'}`);
+            }
+          }
+        } catch (verifyErr) {
+          console.error('⚠️ Could not re-verify thread parent:', verifyErr.message);
+        }
       }
       
       // Fetch last 5 bot responses in this channel to avoid repetition
