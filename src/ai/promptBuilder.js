@@ -224,6 +224,22 @@ Do NOT start with the lead's @mention. Address the team.
       }
       
       prompt += `Ask 1-2 specific, helpful questions to improve their update. Be supportive and constructive.\n\n`;
+    } else if (messageType === 'answered_question') {
+      prompt += `The team member just answered a question you previously asked them. Acknowledge their answer specifically and add value.\n\n`;
+
+      if (eodContext && eodContext.answeredQuestions && eodContext.answeredQuestions.length > 0) {
+        prompt += `## Questions they answered:\n`;
+        for (const q of eodContext.answeredQuestions) {
+          prompt += `- "${q.question_text}"\n`;
+        }
+        prompt += `\n`;
+        prompt += `Acknowledge their specific answer, confirm you understand, and either:\n`;
+        prompt += `1. Provide a concrete next step or suggestion based on what they told you, OR\n`;
+        prompt += `2. Close out the conversation positively if nothing more is needed.\n`;
+        prompt += `Keep it brief (2-3 sentences). Do NOT repeat the original question back to them.\n\n`;
+      } else {
+        prompt += `Acknowledge their response clearly. Confirm you understood and close positively or add a concrete next step.\n\n`;
+      }
     } else if (messageType === 'verified_acknowledgement') {
       prompt += `The team member said they already included the information you asked about. You went back and re-read their original update to verify.\n\n`;
 

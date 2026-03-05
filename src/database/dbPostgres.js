@@ -239,6 +239,30 @@ async function initializeDatabase() {
       )
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pending_questions (
+        id SERIAL PRIMARY KEY,
+        channel_id TEXT NOT NULL,
+        thread_ts TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        bot_message_ts TEXT NOT NULL,
+        question_text TEXT NOT NULL,
+        question_type TEXT,
+        answered INTEGER DEFAULT 0,
+        answer_ts TEXT,
+        answer_text TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_pending_q_user ON pending_questions(user_id, answered)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_pending_q_thread ON pending_questions(thread_ts, answered)
+    `);
+
     console.log('PostgreSQL database initialized successfully');
   } finally {
     client.release();

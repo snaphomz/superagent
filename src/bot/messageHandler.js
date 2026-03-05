@@ -9,6 +9,7 @@ import { hydrationReminder } from '../scheduler/hydrationReminder.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { dailyCheckin } from '../scheduler/dailyCheckin.js';
 import { setScheduleException } from '../scheduler/checkinValidator.js';
+import { pendingQuestions } from '../utils/pendingQuestions.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -68,6 +69,15 @@ export const messageHandler = {
           } catch (fileErr) {
             console.error('⚠️ Could not save file annotation:', fileErr.message);
           }
+        }
+      }
+
+      // Check if this message answers any pending bot questions
+      let answeredQuestions = [];
+      if (message.thread_ts && message.user && !message.bot_id) {
+        answeredQuestions = await pendingQuestions.detectAnswers(message);
+        if (answeredQuestions.length > 0) {
+          console.log(`💬 ${answeredQuestions.length} pending question(s) answered by ${message.user}`);
         }
       }
 
@@ -244,7 +254,7 @@ export const messageHandler = {
         console.log('Could not fetch user info:', error.message);
       }
       
-      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client });
+      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client, answeredQuestions });
       
       const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
       
@@ -253,7 +263,7 @@ export const messageHandler = {
         
         await new Promise(resolve => setTimeout(resolve, config.bot.responseDelay * 1000));
         
-        await client.chat.postMessage({
+        const sentMsg = await client.chat.postMessage({
           channel: message.channel,
           text: result.response,
           thread_ts: message.thread_ts || message.ts,
@@ -268,7 +278,32 @@ export const messageHandler = {
           true,
           new Date().toISOString()
         );
-        
+
+        // Track any questions the bot asked so we can detect when they get answered
+        if (message.user && result.response && result.response.includes('?')) {
+          const threadTs = message.thread_ts || message.ts;
+          const targetUserId = message.user;
+          // Extract questions from the bot response (sentences ending in ?)
+          const questionSentences = result.response
+            .split(/(?<=[.!?])\s+/)
+            .filter(s => s.trim().endsWith('?'))
+            .slice(0, 3); // max 3 questions to track
+          for (const q of questionSentences) {
+            try {
+              await pendingQuestions.saveQuestion({
+                channelId: message.channel,
+                threadTs,
+                userId: targetUserId,
+                botMessageTs: sentMsg.ts,
+                questionText: q.trim(),
+                questionType: result.messageType,
+              });
+            } catch (qErr) {
+              console.error('⚠️ Could not save pending question:', qErr.message);
+            }
+          }
+        }
+
         console.log('✅ Response sent successfully!');
       } else {
         console.log(`⚠️  Low confidence (${result.confidence.toFixed(1)}%), sending for manual review...`);

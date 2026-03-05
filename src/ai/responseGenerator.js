@@ -38,6 +38,11 @@ export const responseGenerator = {
         if (eodContext.shouldEngage && eodContext.priority !== 'none') {
           actualMessageType = 'eod_followup';
         }
+      } else if (options.answeredQuestions && options.answeredQuestions.length > 0 && isThreadReply) {
+        // Bot detected the user answered one or more of its pending questions
+        console.log(`💬 Generating acknowledgement for ${options.answeredQuestions.length} answered question(s)`);
+        actualMessageType = 'answered_question';
+        eodContext = { answeredQuestions: options.answeredQuestions };
       } else if (alreadyAnswered && isThreadReply) {
         // User is pointing back to content they already shared.
         // Re-read the thread parent to verify what's actually there, then confirm specifically.

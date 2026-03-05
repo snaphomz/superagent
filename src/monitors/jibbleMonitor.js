@@ -112,7 +112,8 @@ export const jibbleMonitor = {
 
     // Convert Slack timestamp to Date
     const timestamp = new Date(parseFloat(messageTs) * 1000);
-    const date = timestamp.toISOString().split('T')[0];
+    // Store date in IST so it matches the IST-based daily summary query
+    const date = timestamp.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD in IST
 
     return {
       user_name: userName,
