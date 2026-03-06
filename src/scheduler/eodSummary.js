@@ -2,9 +2,14 @@ import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
 import { eodDetector } from '../utils/eodDetector.js';
 import { yesterdayIST } from '../utils/dateUtils.js';
+import db from '../database/postgres.js';
 
 let slackClient = null;
 let eodUpdateCache = new Map(); // Track EOD updates per day
+let summarySentForDate = null; // Prevent duplicate sends on same date
+
+const PHANI_KUMAR_ID = 'U09KQK8V7ST';
+const MIN_EOD_HOUR_IST = 17; // Don't trigger EOD summary before 5 PM IST
 
 export const eodSummary = {
   initialize(client) {
@@ -73,29 +78,56 @@ export const eodSummary = {
 
   async checkAndSendSummary(date) {
     try {
-      const checkins = await messageStore.getTodayCheckins(date);
+      // Don't send before 5 PM IST — prevents early-morning false triggers
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const istHour = nowIST.getHours();
+      if (istHour < MIN_EOD_HOUR_IST) {
+        console.log(`⏳ EOD summary skipped — too early (${istHour}:xx IST, min ${MIN_EOD_HOUR_IST}:00)`);
+        return;
+      }
+
+      // Prevent duplicate send for same date
+      if (summarySentForDate === date) {
+        console.log(`⏭️  EOD summary already sent for ${date}`);
+        return;
+      }
+
+      // Get ALL non-exempt team members from team_members table
       const freelancerIds = config.scheduler.freelancerIds || [];
-      const programManagerId = config.scheduler.programManagerId;
+      const excludedIds = config.scheduler.excludedUserIds || [];
+      const antonyId = config.target.userId;
 
-      // Get required members (exclude freelancers and program managers)
-      const requiredMembers = checkins.filter(c => 
-        !freelancerIds.includes(c.user_id) && 
-        c.user_id !== programManagerId
+      const membersResult = await db.query(
+        `SELECT user_id FROM team_members
+         WHERE exempt_from_eod = 0
+           AND user_id != $1`,
+        [antonyId]
       );
+      const allRequired = membersResult.rows
+        .map(r => r.user_id)
+        .filter(uid => !freelancerIds.includes(uid) && !excludedIds.includes(uid));
 
-      // Check if all required members have submitted EOD
-      const allSubmitted = requiredMembers.every(c => c.eod_update_received_at);
+      if (allRequired.length === 0) {
+        console.log('⚠️  No required EOD members found');
+        return;
+      }
 
-      if (!allSubmitted) {
-        const submitted = requiredMembers.filter(c => c.eod_update_received_at).length;
-        console.log(`📊 EOD updates: ${submitted}/${requiredMembers.length} submitted`);
+      // Check how many have submitted via cache
+      const submitted = allRequired.filter(uid => eodUpdateCache.has(`${date}:${uid}`));
+      console.log(`📊 EOD updates: ${submitted.length}/${allRequired.length} submitted`);
+
+      if (submitted.length < allRequired.length) {
+        const missing = allRequired.filter(uid => !eodUpdateCache.has(`${date}:${uid}`));
+        console.log(`⏳ Still waiting for: ${missing.join(', ')}`);
         return;
       }
 
       console.log('✅ All required EOD updates received! Generating summary...');
+      summarySentForDate = date;
 
-      // Generate and send summary to program manager
-      await this.sendSummaryToManager(date, requiredMembers);
+      // Build member objects for the summary
+      const memberObjs = allRequired.map(uid => ({ user_id: uid }));
+      await this.sendSummaryToManager(date, memberObjs);
     } catch (error) {
       console.error('❌ Error checking EOD completion:', error);
     }
@@ -150,9 +182,9 @@ export const eodSummary = {
       summary += `---\n`;
       summary += `✅ All team members have submitted their EOD updates for ${date}`;
 
-      // Send summary to channel
+      // Send summary to Phani Kumar via DM (not public channel)
       await slackClient.chat.postMessage({
-        channel: config.target.channelId,
+        channel: PHANI_KUMAR_ID,
         text: summary,
       });
 
