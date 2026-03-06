@@ -58,8 +58,11 @@ export const jibbleMonitor = {
     let userName = null;
     let deviceInfo = null;
 
+    // Strip bold markdown asterisks Jibble adds around the action phrase
+    const cleanText = text.replace(/\*([^*]+)\*/g, '$1');
+
     // Check for "jibbled in"
-    match = text.match(/^(.+?)\s+jibbled in\s+via\s+(.+?)$/i);
+    match = cleanText.match(/^(.+?)\s+jibbled in\s+via\s+(.+?)$/i);
     if (match) {
       userName = match[1].trim();
       deviceInfo = match[2].trim();
@@ -68,7 +71,7 @@ export const jibbleMonitor = {
 
     // Check for "jibbled out"
     if (!match) {
-      match = text.match(/^(.+?)\s+jibbled out\s+via\s+(.+?)$/i);
+      match = cleanText.match(/^(.+?)\s+jibbled out\s+via\s+(.+?)$/i);
       if (match) {
         userName = match[1].trim();
         deviceInfo = match[2].trim();
@@ -78,7 +81,7 @@ export const jibbleMonitor = {
 
     // Check for "started a break"
     if (!match) {
-      match = text.match(/^(.+?)\s+started a break\s+via\s+(.+?)$/i);
+      match = cleanText.match(/^(.+?)\s+started a break\s+via\s+(.+?)$/i);
       if (match) {
         userName = match[1].trim();
         deviceInfo = match[2].trim();
@@ -88,7 +91,7 @@ export const jibbleMonitor = {
 
     // Check for "ended a break" or "ended break"
     if (!match) {
-      match = text.match(/^(.+?)\s+ended (?:a )?break\s+via\s+(.+?)$/i);
+      match = cleanText.match(/^(.+?)\s+ended (?:a )?break\s+via\s+(.+?)$/i);
       if (match) {
         userName = match[1].trim();
         deviceInfo = match[2].trim();
