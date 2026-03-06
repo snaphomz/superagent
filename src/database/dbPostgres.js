@@ -263,6 +263,11 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_pending_q_thread ON pending_questions(thread_ts, answered)
     `);
 
+    // Add missing columns to team_members if they don't exist (migration)
+    await client.query(`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member'`);
+    await client.query(`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS exempt_from_checkins INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS exempt_from_eod INTEGER DEFAULT 0`);
+
     console.log('PostgreSQL database initialized successfully');
   } finally {
     client.release();

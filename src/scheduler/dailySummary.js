@@ -22,93 +22,17 @@ export const dailySummary = {
   },
 
   scheduleDailySummary() {
-    // Check for EOD updates every 30 minutes starting at 6 PM
+    // Send daily summary at 6:30 PM IST every weekday
     dailySummaryJob = cron.schedule(
-      '*/30 18-23 * * *',
+      '30 18 * * 1-6',
       async () => {
-        await this.checkAndSendSummary();
+        await this.sendDailySummary();
       },
       {
         scheduled: true,
         timezone: config.scheduler.timezone,
       }
     );
-  },
-
-  async checkAndSendSummary() {
-    try {
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-      
-      // Check if all required members have submitted EOD updates
-      const allUpdatesComplete = await this.verifyAllEODUpdates(today);
-      
-      if (allUpdatesComplete) {
-        console.log('✅ All EOD updates complete - sending daily summary');
-        await this.sendDailySummary();
-        // Stop checking for today
-        if (dailySummaryJob) {
-          dailySummaryJob.stop();
-          // Reschedule for tomorrow
-          this.scheduleDailySummary();
-        }
-      } else {
-        console.log('⏳ Waiting for all EOD updates to complete...');
-      }
-    } catch (error) {
-      console.error('❌ Error checking EOD updates:', error);
-    }
-  },
-
-  async verifyAllEODUpdates(date) {
-    try {
-      // Get all team members who should submit EOD updates
-      const query = `
-        SELECT user_id, display_name, real_name
-        FROM team_members
-        WHERE exempt_from_eod = 0
-      `;
-      
-      const result = await db.query(query);
-      const requiredMembers = result.rows;
-      
-      if (requiredMembers.length === 0) {
-        console.log('⚠️ No team members require EOD updates');
-        return true;
-      }
-      
-      // Check who has submitted EOD updates today
-      const eodQuery = `
-        SELECT user_id
-        FROM daily_checkins
-        WHERE date = $1
-          AND morning_response_text IS NOT NULL
-          AND morning_response_text != ''
-      `;
-      
-      const eodResult = await db.query(eodQuery, [date]);
-      const submittedUserIds = eodResult.rows.map(r => r.user_id);
-      
-      // Find who hasn't submitted
-      const missingUpdates = requiredMembers.filter(
-        member => !submittedUserIds.includes(member.user_id)
-      );
-      
-      if (missingUpdates.length > 0) {
-        console.log(`⏳ Missing EOD updates from ${missingUpdates.length} members:`);
-        missingUpdates.forEach(member => {
-          const name = member.display_name || member.real_name || member.user_id;
-          console.log(`   - ${name}`);
-        });
-        return false;
-      }
-      
-      console.log(`✅ All ${requiredMembers.length} team members have submitted EOD updates`);
-      return true;
-    } catch (error) {
-      console.error('Error verifying EOD updates:', error);
-      // If there's an error, send summary anyway to avoid blocking
-      return true;
-    }
   },
 
   async sendDailySummary() {

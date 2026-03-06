@@ -27,20 +27,21 @@ export const jibbleMonitor = {
 
       // Only process messages from Jibble app
       if (!message.text || !message.bot_id) {
-        console.log('⏭️  Skipping - not a bot message or no text');
+        console.log(`⏭️  Jibble skip - bot_id: ${message.bot_id}, has text: ${!!message.text}`);
         return;
       }
 
       const text = message.text;
+      console.log(`🔍 Jibble raw text: "${text.substring(0, 200)}"`);
 
       // Parse Jibble notification
       const attendance = this.parseJibbleNotification(text, message.ts);
 
       if (attendance) {
         await this.saveAttendance(attendance);
-        console.log(`✅ Jibble: ${attendance.user_name} - ${attendance.action_type} at ${attendance.timestamp}`);
+        console.log(`✅ Jibble saved: ${attendance.user_name} - ${attendance.action_type} at ${attendance.timestamp} date=${attendance.date}`);
       } else {
-        console.log(`⏭️  Could not parse Jibble notification: "${text.substring(0, 100)}"`);
+        console.log(`⏭️  Jibble not parsed: "${text.substring(0, 200)}"`);
       }
     } catch (error) {
       console.error('❌ Error handling Jibble message:', error);
