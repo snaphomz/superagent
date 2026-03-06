@@ -5,6 +5,8 @@ import { contextBuilder } from '../utils/contextBuilder.js';
 import { messageStore } from '../database/messageStore.js';
 import { questionGenerator } from './questionGenerator.js';
 import { eodDetector } from '../utils/eodDetector.js';
+import { yesterdayIST } from '../utils/dateUtils.js';
+import db from '../database/postgres.js';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -32,7 +34,47 @@ export const responseGenerator = {
       // Also detect if the user is pointing out they already answered
       const alreadyAnswered = message.text && /already\s+(added|written|shared|put|included|mentioned|said|have it|stated|answered)|i\s+have\s+(added|written|shared|put|included)|in\s+(next\s+steps?|my\s+update|the\s+update)/i.test(message.text);
 
-      if (messageType === 'eod_update' && !isThreadReply) {
+      // Morning check-in thread reply: fetch yesterday's EOD and cross-reference
+      const morningCheckinTs = options.morningCheckinTs;
+      const isMorningCheckinReply = isThreadReply && morningCheckinTs && message.thread_ts === morningCheckinTs;
+
+      if (isMorningCheckinReply && message.user) {
+        try {
+          const yesterday = yesterdayIST();
+          const eodMsgResult = await db.query(
+            `SELECT text FROM messages
+             WHERE user_id = $1
+               AND channel_id = $2
+               AND DATE(to_timestamp(timestamp::double precision) AT TIME ZONE 'Asia/Kolkata') = $3::date
+               AND thread_ts IS NULL
+               AND LENGTH(text) > 50
+             ORDER BY timestamp DESC
+             LIMIT 1`,
+            [message.user, config.target.channelId, yesterday]
+          );
+          const prevEodText = eodMsgResult.rows[0]?.text || null;
+          if (prevEodText) {
+            const prevComponents = eodDetector.extractUpdateComponents(prevEodText);
+            const prevAnalysis = eodDetector.analyzeCompleteness(prevComponents);
+            actualMessageType = 'morning_checkin';
+            eodContext = {
+              prevEodText: prevEodText.substring(0, 800),
+              prevComponents,
+              prevAnalysis,
+              todayTasksText: message.text,
+            };
+            console.log(`📋 Morning check-in with yesterday EOD context for ${message.user}`);
+          } else {
+            actualMessageType = 'morning_checkin';
+            eodContext = { prevEodText: null, todayTasksText: message.text };
+            console.log(`📋 Morning check-in (no yesterday EOD found) for ${message.user}`);
+          }
+        } catch (err) {
+          console.error('⚠️ Could not fetch yesterday EOD for check-in context:', err.message);
+          actualMessageType = 'morning_checkin';
+          eodContext = { prevEodText: null, todayTasksText: message.text };
+        }
+      } else if (messageType === 'eod_update' && !isThreadReply) {
         eodContext = questionGenerator.getQuestionContext(message.text);
         
         if (eodContext.shouldEngage && eodContext.priority !== 'none') {

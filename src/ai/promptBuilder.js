@@ -192,7 +192,36 @@ Do NOT start with the lead's @mention. Address the team.
       prompt += `IMPORTANT: Start your response with ${userMention} to notify them. Do NOT use their display name or real name - ONLY use the mention format.\n\n`;
     }
     
-    if (messageType === 'daily_update') {
+    if (messageType === 'morning_checkin') {
+      prompt += `A team member just replied to the morning check-in with their today's tasks/plan.\n\n`;
+      prompt += `Your job is NOT to say "good work" generically. Instead:\n`;
+      prompt += `1. Look at what they said they will do today.\n`;
+      prompt += `2. Compare it against their PREVIOUS DAY's EOD update below.\n`;
+      prompt += `3. If yesterday's EOD mentioned pending items, blockers, or next-day plans that are NOT in today's tasks → call them out specifically and tell them to either address it today or add it to their tasks.\n`;
+      prompt += `4. If everything from yesterday is covered today → acknowledge THAT SPECIFICALLY (e.g. "Good — I can see you've carried over the pending work on X from yesterday.").\n`;
+      prompt += `5. Keep it short: 2-3 sentences max. Be direct and specific, not generic.\n`;
+      prompt += `6. Do NOT say "Good work" or "Great plan" without substance — always tie it to something concrete.\n\n`;
+
+      if (eodContext && eodContext.prevEodText) {
+        prompt += `## Yesterday's EOD Update:\n${eodContext.prevEodText}\n\n`;
+
+        if (eodContext.prevComponents) {
+          const c = eodContext.prevComponents;
+          if (c.tomorrow) {
+            prompt += `## What they planned for today (from yesterday's EOD):\n${c.tomorrow}\n\n`;
+          }
+        }
+
+        prompt += `## What they say they're doing today (their reply just now):\n${eodContext.todayTasksText}\n\n`;
+
+        prompt += `Now cross-reference: are yesterday's pending items / next-day plans reflected in today's tasks? Call out any gaps specifically.\n\n`;
+      } else {
+        prompt += `No previous day EOD found. Acknowledge their plan for today, validate it's specific and realistic, and ask about any blockers or dependencies.\n\n`;
+        if (eodContext && eodContext.todayTasksText) {
+          prompt += `## Their today's plan:\n${eodContext.todayTasksText}\n\n`;
+        }
+      }
+    } else if (messageType === 'daily_update') {
       prompt += `This appears to be a daily update request. Provide a brief, structured update on current tasks and progress.\n\n`;
     } else if (messageType === 'check_in') {
       prompt += `This is a check-in message. Respond warmly and provide a genuine status update.\n\n`;

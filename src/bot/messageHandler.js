@@ -97,8 +97,8 @@ export const messageHandler = {
       await eodSummary.trackEODUpdate(message);
 
       // Track morning check-in responses
-      const morningCheckinTs = dailyCheckin.getMorningCheckinTs();
-      if (morningCheckinTs && message.thread_ts === morningCheckinTs) {
+      const morningCheckinTsForTracking = dailyCheckin.getMorningCheckinTs();
+      if (morningCheckinTsForTracking && message.thread_ts === morningCheckinTsForTracking) {
         const today = todayIST();
         const checkin = await messageStore.getCheckinByDate(today, message.user);
         
@@ -106,7 +106,7 @@ export const messageHandler = {
           await messageStore.saveCheckin({
             date: today,
             userId: message.user,
-            morningMessageTs: morningCheckinTs,
+            morningMessageTs: morningCheckinTsForTracking,
             morningResponseAt: new Date(parseFloat(message.ts) * 1000).toISOString(),
             morningResponseText: message.text,
             planningDone: checkin.planning_done,
@@ -255,7 +255,8 @@ export const messageHandler = {
         console.log('Could not fetch user info:', error.message);
       }
       
-      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client, answeredQuestions });
+      const morningCheckinTs = dailyCheckin.getMorningCheckinTs();
+      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client, answeredQuestions, morningCheckinTs });
       
       const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
       
