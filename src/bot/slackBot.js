@@ -75,6 +75,37 @@ export function createSlackBot() {
       }
     }
 
+    // Handle Jibble debug command — shows raw last 5 Jibble channel messages
+    if (message.text && message.text.trim().toLowerCase() === '!jibble debug') {
+      if (message.user !== ANTONY_USER_ID) return;
+      try {
+        const history = await client.conversations.history({
+          channel: 'C09GDQ1RX7G',
+          limit: 5,
+        });
+        const msgs = history.messages || [];
+        let report = `🔍 *Last ${msgs.length} Jibble channel messages:*\n\n`;
+        for (const m of msgs) {
+          report += `• bot_id: \`${m.bot_id || 'none'}\`\n`;
+          report += `  text: \`${(m.text || '').substring(0, 150)}\`\n`;
+          if (m.blocks && m.blocks.length > 0) {
+            const blockText = JSON.stringify(m.blocks).substring(0, 300);
+            report += `  blocks: \`${blockText}\`\n`;
+          }
+          if (m.attachments && m.attachments.length > 0) {
+            const attText = JSON.stringify(m.attachments[0]).substring(0, 300);
+            report += `  attachments[0]: \`${attText}\`\n`;
+          }
+          report += `\n`;
+        }
+        await client.chat.postMessage({ channel: message.channel, text: report });
+        return;
+      } catch (error) {
+        await client.chat.postMessage({ channel: message.channel, text: `❌ Error: ${error.message}` });
+        return;
+      }
+    }
+
     // Handle Jibble status check command
     if (message.text && message.text.trim().toLowerCase() === '!jibble status') {
       // Check if user is Antony
