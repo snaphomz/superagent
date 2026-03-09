@@ -156,7 +156,7 @@ export const responseGenerator = {
       console.log(`Message Type: ${actualMessageType}`);
       if (eodContext) {
         console.log(`EOD Priority: ${eodContext.priority}`);
-        console.log(`Issues: ${eodContext.analysis.issues.join(', ')}`);
+        console.log(`Issues: ${eodContext.analysis?.issues?.join(', ') ?? 'n/a'}`);
       }
       console.log(`Context Messages: ${contextString.split('\n').length}`);
       
