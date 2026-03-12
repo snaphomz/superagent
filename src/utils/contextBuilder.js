@@ -66,14 +66,21 @@ export const contextBuilder = {
   },
 
   isRelevantForResponse(message, targetUserId) {
-    const mentionedUsers = this.extractMentionedUsers(message.text);
+    const text = message.text || '';
+    const mentionedUsers = this.extractMentionedUsers(text);
     
     if (mentionedUsers.includes(targetUserId)) {
       return true;
     }
     
-    const messageType = this.detectMessageType(message.text);
-    if (['question', 'check_in', 'task_delegation'].includes(messageType)) {
+    const messageType = this.detectMessageType(text);
+    // Respond to all meaningful message types
+    if (['question', 'check_in', 'task_delegation', 'daily_update', 'eod_update'].includes(messageType)) {
+      return true;
+    }
+
+    // Respond to any substantive message (>30 chars) — catches task lists, updates, general updates
+    if (text.trim().length > 30) {
       return true;
     }
     

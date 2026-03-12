@@ -180,7 +180,12 @@ export const messageHandler = {
 
       const messageType = contextBuilder.detectMessageType(message.text);
       const isEODUpdate = messageType === 'eod_update';
-      const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId) || isQuestionInThread;
+
+      // Morning check-in thread replies are always relevant
+      const morningTsCheck = dailyCheckin.getMorningCheckinTs();
+      const isMorningCheckinReply = !!(morningTsCheck && message.thread_ts === morningTsCheck);
+
+      const isRelevant = contextBuilder.isRelevantForResponse(message, config.target.userId) || isQuestionInThread || isMorningCheckinReply;
 
       // Detect program manager (Phani) messages — respond differently
       const PHANI_USER_ID = 'U09KQK8V7ST';
