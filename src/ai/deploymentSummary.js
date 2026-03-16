@@ -1,9 +1,4 @@
-import OpenAI from 'openai';
-import { config } from '../config/slack.js';
-
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-});
+import { openai, GPT_MODEL } from '../ai/openaiClient.js';
 
 export const deploymentSummary = {
   async generatePurposeSummary(contextData) {
@@ -72,7 +67,7 @@ FORMATTING RULES:
 - Be specific and include all details from every message`;
 
       const response = await openai.chat.completions.create({
-        model: config.openai.model,
+        model: GPT_MODEL,
         messages: [
           {
             role: 'system',
@@ -119,7 +114,7 @@ Format as JSON:
 }`;
 
       const response = await openai.chat.completions.create({
-        model: config.openai.model,
+        model: GPT_MODEL,
         messages: [
           {
             role: 'system',

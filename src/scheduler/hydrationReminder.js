@@ -1,16 +1,13 @@
 import cron from 'node-cron';
 import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
-import OpenAI from 'openai';
+import { openai, GPT_MODEL } from '../ai/openaiClient.js';
 
 let hydrationCheckJob = null;
 let slackClient = null;
 let lastActivityTime = Date.now();
 let lastHydrationReminder = null;
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-});
 
 export const hydrationReminder = {
   initialize(client) {
@@ -168,7 +165,7 @@ Examples of adding value:
 Make it sound like Antony: direct, delivery-focused, adding value beyond just hydration.`;
 
       const response = await openai.chat.completions.create({
-        model: config.openai.model,
+        model: GPT_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

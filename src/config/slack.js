@@ -14,7 +14,7 @@ export const config = {
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
-    model: 'gpt-4o-mini',
+    model: 'gpt-5',
   },
   bot: {
     autoSendThreshold: parseInt(process.env.AUTO_SEND_THRESHOLD || '85'),

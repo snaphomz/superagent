@@ -1,11 +1,10 @@
 import cron from 'node-cron';
-import OpenAI from 'openai';
+import { openai, GPT_MODEL } from '../ai/openaiClient.js';
 import db from '../database/postgres.js';
 import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { clickupClient } from '../integrations/clickupClient.js';
 import { config } from '../config/slack.js';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Access control — only these two users ever receive strike data
 const ANTONY_ID = config.target.userId;
@@ -213,7 +212,7 @@ export const strikeEvaluator = {
   async scoreEODQuality(text) {
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: GPT_MODEL,
         messages: [
           {
             role: 'system',

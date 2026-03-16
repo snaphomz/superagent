@@ -10,6 +10,7 @@ import db from '../database/postgres.js';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
+  baseURL: 'https://freeaiapikey.com/v1',
 });
 
 export const responseGenerator = {
@@ -161,7 +162,7 @@ export const responseGenerator = {
       console.log(`Context Messages: ${contextString.split('\n').length}`);
       
       const completion = await openai.chat.completions.create({
-        model: config.openai.model,
+        model: 'gpt-5',
         messages: [
           { role: 'system', content: prompts.system },
           { role: 'user', content: prompts.user },

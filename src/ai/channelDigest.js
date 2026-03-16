@@ -1,7 +1,6 @@
-import OpenAI from 'openai';
+import { openai, GPT_MODEL } from '../ai/openaiClient.js';
 import db from '../database/postgres.js';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const channelDigest = {
   async generateAndSaveDigest(channelId, date, slackClient = null) {
@@ -53,7 +52,7 @@ Format as valid JSON only, no markdown:
 }`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: GPT_MODEL,
         messages: [
           { role: 'system', content: 'You are a technical project manager extracting structured insights from team communications. Always respond with valid JSON only.' },
           { role: 'user', content: prompt }

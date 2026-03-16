@@ -208,8 +208,7 @@ export const dailySummary = {
         `[${i + 1}] ${m.text}`
       ).join('\n');
       
-      const { OpenAI } = await import('openai');
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const { openai, GPT_MODEL } = await import('../ai/openaiClient.js');
       
       const prompt = `You are analyzing messages from the OBI Team external deployment channel. Summarize the key activities, identify any issues or blockers, and highlight important updates.
 
@@ -231,7 +230,7 @@ Format as JSON:
 }`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: GPT_MODEL,
         messages: [
           { role: 'system', content: 'You are analyzing external team communications for a project manager.' },
           { role: 'user', content: prompt }
@@ -367,8 +366,7 @@ Format as JSON:
         `${u.user}: ${u.update || ''}`
       ).join('\n\n');
       
-      const { OpenAI } = await import('openai');
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const { openai, GPT_MODEL } = await import('../ai/openaiClient.js');
       
       const prompt = `You are analyzing end-of-day updates from a software development team. Your job is to identify red flags, potential delays, blockers, and ambiguities.
 
@@ -396,7 +394,7 @@ Focus on:
 - Repeated problems or patterns`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: GPT_MODEL,
         messages: [
           { role: 'system', content: 'You are a technical project manager analyzing team updates for risks and insights.' },
           { role: 'user', content: prompt }
