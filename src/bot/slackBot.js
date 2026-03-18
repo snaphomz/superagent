@@ -23,6 +23,21 @@ export function createSlackBot() {
     // Debug: Log all messages for troubleshooting
     console.log(`📨 Message received: "${message.text}" from user ${message.user} in channel ${message.channel}`);
     
+    // Special test - respond to any message containing "test" to verify bot is working
+    if (message.text && message.text.toLowerCase().includes('test')) {
+      console.log(`🧪 Test message detected in channel ${message.channel}`);
+      try {
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: `✅ Test successful! I received "${message.text}" from <@${message.user}> in channel ${message.channel}`,
+        });
+        console.log(`✅ Test response sent to channel ${message.channel}`);
+      } catch (error) {
+        console.error('Error sending test response:', error);
+      }
+      return;
+    }
+    
     // Only allow Antony to use bot commands
     const ANTONY_USER_ID = config.target.userId;
     
