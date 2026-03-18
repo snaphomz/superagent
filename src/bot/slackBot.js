@@ -10,6 +10,7 @@ import { todayIST } from '../utils/dateUtils.js';
 import { feedbackCollector } from '../learning/feedbackCollector.js';
 import { learningCommands } from '../learning/learningCommands.js';
 import { dailySummary } from '../scheduler/dailySummary.js';
+import { slashCommands } from './slashCommands.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -604,6 +605,15 @@ export function createSlackBot() {
     } catch (error) {
       console.error('Error tracking reaction removal:', error);
     }
+  });
+
+  // Add slash command handlers
+  app.command('/eod', async ({ command, ack, client, body }) => {
+    await slashCommands.handleEODCommand({ command, ack, client, body });
+  });
+
+  app.command('/test', async ({ command, ack, client, body }) => {
+    await slashCommands.handleTestCommand({ command, ack, client, body });
   });
 
   return app;
