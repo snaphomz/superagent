@@ -253,6 +253,8 @@ export const messageHandler = {
         console.log('\n🤖 Generating response for relevant message...');
       }
       
+      console.log('🔄 About to call responseGenerator.generateResponse...');
+      
       let userInfo = null;
       try {
         const userInfoResponse = await client.users.info({ user: message.user });
