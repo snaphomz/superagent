@@ -140,7 +140,7 @@ export const hydrationReminder = {
    - Challenge team to clarify blockers or priorities
    - Remind about 45-min stuck rule (ask for help)
    - Encourage asking clarifying questions
-9. If uncertain about priorities/context, ASK Antony for feedback by mentioning <@${config.target.userId}>
+9. If uncertain about priorities/context, ASK Antony (CTO, spelled A-N-T-O-N-Y) for feedback by mentioning <@${config.target.userId}>
 10. Make it actionable and delivery-focused
 
 Generate ONLY the message text, nothing else.`;
@@ -154,7 +154,7 @@ Your message should:
 4. Challenge them to clarify blockers or ask questions if stuck
 5. Use minimal emojis (1-2 max, not excessive)
 6. Sound natural and direct, exactly how Antony (CTO) would say it
-7. If you're unsure about current priorities or need context, ASK Antony for feedback by mentioning him
+7. If you're unsure about current priorities or need context, ASK Antony (CTO, spelled A-N-T-O-N-Y) for feedback by mentioning him
 
 Examples of adding value:
 - "Use this break to clarify your next 2 tasks"
