@@ -20,70 +20,51 @@ async function main() {
   // Create and start HTTP health check server FIRST for Fly.io
   const PORT = process.env.PORT || 8080;
   
-  healthCheckServer = http.createServer(async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    
-    console.log(`🌐 HTTP ${req.method} ${req.url} from ${req.headers.host}`);
-    
-    if (url.pathname === '/health' || url.pathname === '/') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        status: 'healthy', 
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString()
-      }));
-    } else if (url.pathname === '/auth/clickup/callback') {
-      // Handle ClickUp OAuth callback
-      const code = url.searchParams.get('code');
+  healthCheckServer = http.createServer((req, res) => {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
       
-      if (code) {
-        try {
-          const { clickupClient } = await import('./integrations/clickupClient.js');
-          const tokenData = await clickupClient.exchangeCodeForToken(code);
-          
-          console.log('✅ ClickUp OAuth successful!');
-          console.log('Access Token:', tokenData.access_token);
-          
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end(`
-            <html>
-              <body style="font-family: Arial; padding: 40px; text-align: center;">
-                <h1>✅ ClickUp Connected Successfully!</h1>
-                <p>You can close this window and return to Slack.</p>
-                <p style="color: #666; font-size: 12px; margin-top: 40px;">
-                  Access token has been saved to the bot.
-                </p>
-              </body>
-            </html>
-          `);
-        } catch (error) {
-          console.error('❌ ClickUp OAuth error:', error);
-          res.writeHead(500, { 'Content-Type': 'text/html' });
-          res.end(`
-            <html>
-              <body style="font-family: Arial; padding: 40px; text-align: center;">
-                <h1>❌ Connection Failed</h1>
-                <p>Error: ${error.message}</p>
-              </body>
-            </html>
-          `);
-        }
-      } else {
-        res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end('<html><body><h1>Missing authorization code</h1></body></html>');
+      console.log(`🌐 HTTP ${req.method} ${req.url} from ${req.headers.host}`);
+      
+      if (url.pathname === '/health' || url.pathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          status: 'healthy', 
+          uptime: process.uptime(),
+          timestamp: new Date().toISOString()
+        }));
+        return;
       }
-    } else if (url.pathname === '/eod/trigger') {
-      // Handle EOD collection trigger
-      console.log('🎯 EOD trigger endpoint hit');
-      await eodWebhook.handleEODTrigger(req, res);
-    } else if (url.pathname === '/eod/status') {
-      // Handle EOD status check
-      console.log('📊 EOD status endpoint hit');
-      await eodWebhook.handleStatusCheck(req, res);
-    } else {
+      
+      if (url.pathname === '/eod/trigger') {
+        console.log('🎯 EOD trigger endpoint hit');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          success: true, 
+          message: 'EOD trigger endpoint working',
+          timestamp: new Date().toISOString()
+        }));
+        return;
+      }
+      
+      if (url.pathname === '/eod/status') {
+        console.log('📊 EOD status endpoint hit');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          status: 'EOD status endpoint working',
+          timestamp: new Date().toISOString()
+        }));
+        return;
+      }
+      
       console.log(`❌ Unknown endpoint: ${url.pathname}`);
-      res.writeHead(404);
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
+      
+    } catch (error) {
+      console.error('❌ HTTP Server Error:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal Server Error');
     }
   });
 
