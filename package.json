@@ -5,9 +5,10 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "train": "node src/trainer.js"
+    "start": "node simple-server.js",
+    "dev": "nodemon simple-server.js",
+    "train": "node src/trainer.js",
+    "full": "node src/index.js"
   },
   "dependencies": {
     "@slack/bolt": "^3.17.1",
