@@ -23,6 +23,8 @@ async function main() {
   healthCheckServer = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     
+    console.log(`🌐 HTTP ${req.method} ${req.url} from ${req.headers.host}`);
+    
     if (url.pathname === '/health' || url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
@@ -72,11 +74,14 @@ async function main() {
       }
     } else if (url.pathname === '/eod/trigger') {
       // Handle EOD collection trigger
+      console.log('🎯 EOD trigger endpoint hit');
       await eodWebhook.handleEODTrigger(req, res);
     } else if (url.pathname === '/eod/status') {
       // Handle EOD status check
+      console.log('📊 EOD status endpoint hit');
       await eodWebhook.handleStatusCheck(req, res);
     } else {
+      console.log(`❌ Unknown endpoint: ${url.pathname}`);
       res.writeHead(404);
       res.end('Not Found');
     }
