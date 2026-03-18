@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { config } from '../config/slack.js';
 import { messageStore } from '../database/messageStore.js';
 import { todayIST } from '../utils/dateUtils.js';
+import { hydrationReminder } from './hydrationReminder.js';
 
 let morningCheckinJob = null;
 let slackClient = null;
@@ -60,6 +61,10 @@ Time for your daily planning check-in. Please reply in thread with specific deta
 
       // Store the message timestamp for thread tracking
       morningCheckinMessageTs = result.ts;
+      
+      // Record morning check-in to prevent hydration reminder from firing immediately
+      hydrationReminder.recordMorningCheckin();
+      
       const today = todayIST();
       
       // Get all team members who should respond (non-freelancers and non-excluded)

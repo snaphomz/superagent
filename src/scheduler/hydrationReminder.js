@@ -7,9 +7,14 @@ let hydrationCheckJob = null;
 let slackClient = null;
 let lastActivityTime = Date.now();
 let lastHydrationReminder = null;
-
+let lastMorningCheckinTime = null;
 
 export const hydrationReminder = {
+  // Track when morning check-in was sent
+  recordMorningCheckin() {
+    lastMorningCheckinTime = Date.now();
+    console.log('💧 Morning check-in recorded - hydration cooldown started');
+  },
   initialize(client) {
     slackClient = client;
     this.scheduleHydrationChecks();
@@ -46,6 +51,18 @@ export const hydrationReminder = {
       }
 
       const now = Date.now();
+
+      // Check if morning check-in was sent recently (within 3 hours)
+      if (lastMorningCheckinTime) {
+        const timeSinceMorningCheckin = now - lastMorningCheckinTime;
+        const morningCheckinCooldownMs = 3 * 60 * 60 * 1000; // 3 hours
+        
+        if (timeSinceMorningCheckin < morningCheckinCooldownMs) {
+          console.log(`💧 Skipping hydration reminder - morning check-in sent ${Math.round(timeSinceMorningCheckin / 60000)} minutes ago`);
+          return;
+        }
+      }
+
       const silenceDuration = now - lastActivityTime;
       const silenceThresholdMs = 90 * 60 * 1000; // 90 minutes of silence
 

@@ -266,21 +266,30 @@ Reply with only the integer score (0-10):`
       const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
 
       const userClickupNames = SLACK_TO_CLICKUP[userId] || [];
+      console.log(`⚡ Checking overdue tasks for ${userId} -> ClickUp names: ${userClickupNames.join(', ')}`);
 
-      return tasks.filter(task => {
+      const overdueTasks = tasks.filter(task => {
         if (!task.due_date) return false;
         const dueMs = parseInt(task.due_date);
         if (now - dueMs < twoDaysMs) return false; // not yet 2 days overdue
 
+        console.log(`⚡ Task: ${task.name}, status: ${task.status?.status}, assignees: ${task.assignees?.map(a => a.username).join(', ')}`);
+
         const isComplete =
-          task.status.status.toLowerCase().includes('complete') ||
-          task.status.status.toLowerCase().includes('done') ||
-          task.status.status.toLowerCase().includes('closed');
+          task.status?.status?.toLowerCase().includes('complete') ||
+          task.status?.status?.toLowerCase().includes('done') ||
+          task.status?.status?.toLowerCase().includes('closed');
         if (isComplete) return false;
 
-        return task.assignees.some(a =>
+        const isAssigned = task.assignees.some(a =>
           userClickupNames.includes(a.username.toLowerCase())
         );
+        
+        if (isAssigned) {
+          console.log(`⚡ Found overdue task assigned to user: ${task.name}`);
+        }
+        
+        return isAssigned;
       });
     } catch (error) {
       console.error('⚠️ Could not check ClickUp overdue tasks:', error.message);
