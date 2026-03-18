@@ -219,9 +219,9 @@ export const messageHandler = {
         // Fall through to generate a team-reinforcing response
       }
 
-      // Skip Antony's messages unless they're questions in bot threads OR EOD updates
-      if (message.user === config.target.userId && !isQuestionInThread && !isEODUpdate) {
-        console.log('⏭️  Skipping Antony\'s message (not a question in thread or EOD update)');
+      // Skip Antony's messages unless they're questions in bot threads
+      if (message.user === config.target.userId && !isQuestionInThread) {
+        console.log('⏭️  Skipping Antony\'s message (not a question in thread)');
         return;
       }
       
