@@ -282,10 +282,14 @@ export function createSlackBot() {
       return;
     }
 
-    // Handle EOD collection commands — Antony-only
+    // Handle EOD collection commands
     if (message.text && message.text.trim().toLowerCase().startsWith('!eod')) {
       if (message.user !== ANTONY_USER_ID) {
-        console.log(`⛔ Unauthorized EOD command by ${message.user}`);
+        // Send a helpful message about the command
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: `⚠️ This command can only be used by Antony. Please ask Antony to run \`!eod collect\` if you need to trigger EOD collection.`,
+        });
         return;
       }
 
@@ -337,6 +341,30 @@ export function createSlackBot() {
         await client.chat.postMessage({
           channel: message.channel,
           text: '❌ Error processing EOD command.',
+        });
+      }
+      return;
+    }
+
+    // Handle request EOD collection command (anyone can use)
+    if (message.text && message.text.trim().toLowerCase() === '!request eod') {
+      try {
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: `📝 Requesting EOD collection from Antony...\n\nHe'll need to run \`!eod collect\` to start the process. Thanks for the reminder! 🙏`,
+        });
+        
+        // Also notify Antony directly
+        await client.chat.postMessage({
+          channel: ANTONY_USER_ID,
+          text: `📝 *EOD Collection Request*\n\nSomeone in <#${message.channel}> requested EOD collection.\n\nRun \`!eod collect\` in any channel to start the process.`,
+        });
+        
+      } catch (error) {
+        console.error('Error handling EOD request:', error);
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: '❌ Error requesting EOD collection.',
         });
       }
       return;
