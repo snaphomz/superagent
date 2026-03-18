@@ -20,7 +20,7 @@ async function main() {
   // Create and start HTTP health check server FIRST for Fly.io
   const PORT = process.env.PORT || 8080;
   
-  healthCheckServer = http.createServer((req, res) => {
+  healthCheckServer = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       
@@ -39,11 +39,34 @@ async function main() {
       if (url.pathname === '/eod/trigger') {
         console.log('🎯 EOD trigger endpoint hit');
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: true, 
-          message: 'EOD trigger endpoint working',
-          timestamp: new Date().toISOString()
-        }));
+        
+        // Try to trigger real EOD collection if dailySummary is available
+        try {
+          const { dailySummary } = await import('./scheduler/dailySummary.js');
+          const triggered = dailySummary.triggerEODCollection();
+          
+          if (triggered) {
+            res.end(JSON.stringify({ 
+              success: true, 
+              message: 'EOD collection started successfully',
+              timestamp: new Date().toISOString()
+            }));
+          } else {
+            res.end(JSON.stringify({ 
+              success: false, 
+              message: 'EOD collection already in progress',
+              timestamp: new Date().toISOString()
+            }));
+          }
+        } catch (error) {
+          console.error('EOD trigger error:', error);
+          res.end(JSON.stringify({ 
+            success: false, 
+            message: 'EOD collection not available',
+            error: error.message,
+            timestamp: new Date().toISOString()
+          }));
+        }
         return;
       }
       

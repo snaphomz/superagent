@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node simple-server.js",
-    "dev": "nodemon simple-server.js",
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "train": "node src/trainer.js"
   },
   "dependencies": {
