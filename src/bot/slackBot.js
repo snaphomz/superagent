@@ -284,7 +284,10 @@ export function createSlackBot() {
 
     // Handle EOD collection commands
     if (message.text && message.text.trim().toLowerCase().startsWith('!eod')) {
+      console.log(`🔍 EOD command detected: "${message.text}" from user ${message.user} in channel ${message.channel}`);
+      
       if (message.user !== ANTONY_USER_ID) {
+        console.log(`⛔ Unauthorized EOD command by ${message.user} (not Antony)`);
         // Send a helpful message about the command
         await client.chat.postMessage({
           channel: message.channel,
@@ -292,9 +295,11 @@ export function createSlackBot() {
         });
         return;
       }
-
+      
+      console.log(`✅ Authorized EOD command from Antony`);
       const parts = message.text.trim().split(/\s+/);
       const subCmd = parts[1]?.toLowerCase();
+      console.log(`📝 EOD subcommand: "${subCmd}"`);
 
       try {
         if (subCmd === 'collect') {

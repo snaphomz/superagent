@@ -117,23 +117,18 @@ export const eodCollector = {
   async sendInitialNudges() {
     console.log(`📤 Sending initial EOD nudges to ${collectionState.missingMembers.length} members`);
     
-    for (const member of collectionState.missingMembers) {
-      try {
-        const name = member.display_name || member.real_name || 'there';
-        
-        await slackClient.chat.postMessage({
-          channel: member.user_id,
-          text: `Hi ${name}! 📝\n\nIt's time for your EOD update. Please share your:\n\n• **Purpose**: What you worked on today\n• **Process**: How you did it\n• **Payoff**: The outcome/value\n\nJust post it in the main channel when ready. Thanks!`,
-        });
-        
-        collectionState.remindedMembers.add(member.user_id);
-        
-        // Small delay between messages to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-      } catch (error) {
-        console.error(`Error sending nudge to ${member.user_id}:`, error.message);
-      }
+    // Send a single channel-wide message instead of DMs
+    const missingNames = collectionState.missingMembers.map(m => 
+      m.display_name || m.real_name || `<@${m.user_id}>`
+    ).join(', ');
+    
+    try {
+      await slackClient.chat.postMessage({
+        channel: config.target.channelId,
+        text: `📝 *EOD Collection Started*\n\nWaiting for EOD updates from:\n${missingNames}\n\nPlease share your Purpose, Process, and Payoff for today's work. Thanks! 🙏`,
+      });
+    } catch (error) {
+      console.error('Error sending channel nudge:', error.message);
     }
   },
 
@@ -178,21 +173,18 @@ export const eodCollector = {
     
     console.log(`⏳ Still waiting for ${stillMissing.length} EOD updates`);
     
-    // Send gentle reminders to those still missing
-    for (const member of stillMissing) {
-      try {
-        const name = member.display_name || member.real_name || 'there';
-        
-        await slackClient.chat.postMessage({
-          channel: member.user_id,
-          text: `Hi ${name}! 👋\n\nJust checking in on your EOD update. Do you need more time or have any questions about what to include?\n\nIf you're running late, no worries - just let me know when you can share it. 🙏`,
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-      } catch (error) {
-        console.error(`Error sending reminder to ${member.user_id}:`, error.message);
-      }
+    // Send gentle reminder to channel
+    const missingNames = stillMissing.map(m => 
+      m.display_name || m.real_name || `<@${m.user_id}>`
+    ).join(', ');
+    
+    try {
+      await slackClient.chat.postMessage({
+        channel: config.target.channelId,
+        text: `👋 *Gentle EOD Reminder*\n\nStill waiting for updates from:\n${missingNames}\n\nNo worries if you're running late - just share when you can! 🙏`,
+      });
+    } catch (error) {
+      console.error('Error sending reminder:', error.message);
     }
     
     collectionState.missingMembers = stillMissing;
@@ -210,29 +202,22 @@ export const eodCollector = {
     
     await slackClient.chat.postMessage({
       channel: ANTONY_ID,
-      text: `📝 *EOD Collection Update*\n\nStill waiting for EOD updates from:\n${missingNames}\n\nSending final reminders now. Will share summary in 30 minutes regardless.`,
+      text: `📝 *EOD Collection Update*\n\nStill waiting for EOD updates from:\n${missingNames}\n\nSending final reminder now. Will share summary in 30 minutes regardless.`,
     });
     
     await slackClient.chat.postMessage({
       channel: PHANI_KUMAR_ID,
-      text: `📝 *EOD Collection Update*\n\nStill waiting for EOD updates from:\n${missingNames}\n\nSending final reminders now. Will share summary in 30 minutes regardless.`,
+      text: `📝 *EOD Collection Update*\n\nStill waiting for EOD updates from:\n${missingNames}\n\nSending final reminder now. Will share summary in 30 minutes regardless.`,
     });
     
-    // Send final reminder to missing members
-    for (const member of collectionState.missingMembers) {
-      try {
-        const name = member.display_name || member.real_name || 'there';
-        
-        await slackClient.chat.postMessage({
-          channel: member.user_id,
-          text: `Hi ${name}! ⏰\n\nFinal reminder for your EOD update. The team is waiting to wrap up the day.\n\nIf you can't share a full update right now, just:\n• Quick status of what you did\n• When you can share details\n\nThanks for your understanding! 🙏`,
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-      } catch (error) {
-        console.error(`Error sending final reminder to ${member.user_id}:`, error.message);
-      }
+    // Send final reminder to main channel
+    try {
+      await slackClient.chat.postMessage({
+        channel: config.target.channelId,
+        text: `⏰ *Final EOD Reminder*\n\nTeam is waiting to wrap up the day! Still need updates from:\n${missingNames}\n\nIf you can't share a full update right now, just a quick status of what you did today would be great. Thanks for understanding! 🙏`,
+      });
+    } catch (error) {
+      console.error('Error sending final reminder:', error.message);
     }
     
     collectionState.finalReminderSent = true;
@@ -285,11 +270,15 @@ export const eodCollector = {
 
   // Manual trigger for testing
   async triggerEODCollection() {
+    console.log('🔀 Manual EOD collection trigger requested');
+    console.log('Current state:', collectionState);
+    
     if (collectionState.isCollecting) {
-      console.log('⚠️ EOD collection already in progress');
+      console.log('⚠️ EOD collection already in progress, not starting new one');
       return false;
     }
     
+    console.log('✅ Starting manual EOD collection');
     await this.startEODCollection();
     return true;
   },
