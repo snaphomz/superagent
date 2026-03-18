@@ -24,8 +24,7 @@ const server = http.createServer(async (req, res) => {
       
       // Try to trigger real EOD collection
       try {
-        // Load environment variables for database and Slack
-        const { createClient } = await import('@supabase/supabase-js');
+        // Load Slack Web API
         const { WebClient } = await import('@slack/web-api');
         
         // Simple EOD trigger that sends a message to main channel
