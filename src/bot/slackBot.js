@@ -257,10 +257,18 @@ export function createSlackBot() {
           await learningCommands.handleFAQDetails(client, message.channel);
         } else if (subCmd === 'context') {
           await learningCommands.handleContextWeights(client, message.channel);
+        } else if (subCmd === 'dashboard') {
+          const period = parts[2] || 'week';
+          await learningCommands.handleAnalyticsDashboard(client, message.channel, period);
+        } else if (subCmd === 'team') {
+          const period = parts[2] || 'week';
+          await learningCommands.handleTeamInsights(client, message.channel, period);
+        } else if (subCmd === 'proactive') {
+          await learningCommands.handleProactiveInsights(client, message.channel);
         } else {
           await client.chat.postMessage({
             channel: message.channel,
-            text: `📚 *Learning Commands:*\n• \`!learning insights\` - View learning insights report\n• \`!learning patterns [type]\` - View pattern details\n• \`!learning feedback [hours]\` - View recent feedback\n• \`!learning faq\` - View FAQ automation details\n• \`!learning context\` - View context optimization weights\n\nPattern types: all, style_pattern, eod_template, question_template`,
+            text: `📚 *Learning Commands:*\n• \`!learning insights\` - View learning insights report\n• \`!learning patterns [type]\` - View pattern details\n• \`!learning feedback [hours]\` - View recent feedback\n• \`!learning faq\` - View FAQ automation details\n• \`!learning context\` - View context optimization weights\n• \`!learning dashboard [period]\` - View analytics dashboard\n• \`!learning team [period]\` - View team insights\n• \`!learning proactive\` - View proactive insights\n\nPattern types: all, style_pattern, eod_template, question_template\nPeriods: day, week, month`,
           });
         }
       } catch (error) {

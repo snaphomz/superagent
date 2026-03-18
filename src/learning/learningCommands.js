@@ -3,6 +3,9 @@ import { patternsStore } from './patternsStore.js';
 import { feedbackStore } from './feedbackStore.js';
 import { faqAutomation } from './faqAutomation.js';
 import { contextOptimizer } from './contextOptimizer.js';
+import { analyticsDashboard } from './analyticsDashboard.js';
+import { proactiveAssistant } from './proactiveAssistant.js';
+import { teamInsightsGenerator } from './teamInsightsGenerator.js';
 
 export const learningCommands = {
   // Handle learning insights command
@@ -75,6 +78,23 @@ export const learningCommands = {
         weightEntries.slice(0, 3).forEach(([key, weight]) => {
           const displayName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
           message += `• ${displayName}: ${weight.toFixed(2)}\n`;
+        });
+      }
+      
+      // Phase 4: Team Health
+      if (insights.teamInsights) {
+        message += '\n👥 *Team Health:*\n';
+        message += `• Health Score: ${insights.teamInsights.healthScore}/100\n`;
+        message += `• Active Users: ${insights.teamInsights.activeUsers}\n`;
+        message += `• Engagement Rate: ${insights.teamInsights.engagementRate}%\n`;
+      }
+      
+      // Phase 4: Proactive Alerts
+      if (insights.proactiveAlerts && insights.proactiveAlerts.length > 0) {
+        message += '\n🚨 *Proactive Alerts:*\n';
+        insights.proactiveAlerts.slice(0, 2).forEach(alert => {
+          const emoji = alert.severity === 'high' ? '🔴' : alert.severity === 'medium' ? '🟡' : '🟢';
+          message += `${emoji} ${alert.description}\n`;
         });
       }
       
@@ -296,6 +316,154 @@ export const learningCommands = {
       await client.chat.postMessage({
         channel: channelId,
         text: '❌ Error retrieving context weights.',
+      });
+    }
+  },
+
+  // Handle analytics dashboard command
+  async handleAnalyticsDashboard(client, channelId, period = 'week') {
+    try {
+      const dashboard = await analyticsDashboard.generateDashboardData(config.target.channelId, period);
+      
+      if (!dashboard) {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: '📊 Unable to generate analytics dashboard. Not enough data.',
+        });
+        return;
+      }
+      
+      const formattedMessage = analyticsDashboard.formatForSlack(dashboard);
+      
+      await client.chat.postMessage({
+        channel: channelId,
+        text: formattedMessage,
+      });
+      
+    } catch (error) {
+      console.error('Error generating analytics dashboard:', error);
+      await client.chat.postMessage({
+        channel: channelId,
+        text: '❌ Error generating analytics dashboard.',
+      });
+    }
+  },
+
+  // Handle team insights command
+  async handleTeamInsights(client, channelId, period = 'week') {
+    try {
+      const insights = await teamInsightsGenerator.generateTeamInsights(config.target.channelId, period);
+      
+      if (!insights) {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: '👥 Unable to generate team insights. Not enough data.',
+        });
+        return;
+      }
+      
+      let message = `👥 *Team Insights* (${period})\n\n`;
+      
+      // Overview
+      message += '*Overview:*\n';
+      message += `• Total Messages: ${insights.overview.totalMessages}\n`;
+      message += `• Active Users: ${insights.overview.activeUsers}\n`;
+      message += `• EOD Completion: ${insights.overview.eodCompletionRate}%\n`;
+      message += `• Questions: ${insights.overview.questionRate}%\n`;
+      message += `• Most Active Day: ${insights.overview.mostActiveDay.day}\n\n`;
+      
+      // Top contributors
+      const topContributors = Object.entries(insights.individualContributions)
+        .sort((a, b) => b[1].contributionScore - a[1].contributionScore)
+        .slice(0, 3);
+      
+      if (topContributors.length > 0) {
+        message += '*Top Contributors:*\n';
+        topContributors.forEach(([userId, stats], i) => {
+          message += `${i+1}. <@${userId}> - ${stats.contributionScore.toFixed(0)} pts\n`;
+        });
+        message += '\n';
+      }
+      
+      // Recommendations
+      if (insights.recommendations.length > 0) {
+        message += '*Recommendations:*\n';
+        insights.recommendations.slice(0, 2).forEach(rec => {
+          const priority = rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '🟢';
+          message += `${priority} ${rec.title}\n`;
+        });
+      }
+      
+      await client.chat.postMessage({
+        channel: channelId,
+        text: message,
+      });
+      
+    } catch (error) {
+      console.error('Error generating team insights:', error);
+      await client.chat.postMessage({
+        channel: channelId,
+        text: '❌ Error generating team insights.',
+      });
+    }
+  },
+
+  // Handle proactive insights command
+  async handleProactiveInsights(client, channelId) {
+    try {
+      const insights = await proactiveAssistant.generateProactiveInsights(config.target.channelId, 24);
+      
+      if (!insights) {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: '🔍 Unable to generate proactive insights. Not enough data.',
+        });
+        return;
+      }
+      
+      let message = '🔍 *Proactive Insights*\n\n';
+      
+      // Risks
+      if (insights.pendingRisks.length > 0) {
+        message += '*Pending Risks:*\n';
+        insights.pendingRisks.forEach(risk => {
+          const severity = risk.severity === 'high' ? '🔴' : risk.severity === 'medium' ? '🟡' : '🟢';
+          message += `${severity} ${risk.description}\n  ${risk.suggestion}\n\n`;
+        });
+      }
+      
+      // Opportunities
+      if (insights.optimizationOpportunities.length > 0) {
+        message += '*Optimization Opportunities:*\n';
+        insights.optimizationOpportunities.forEach(opp => {
+          const impact = opp.potentialImpact === 'high' ? '⭐' : opp.potentialImpact === 'medium' ? '📍' : '💡';
+          message += `${impact} ${opp.description}\n  ${opp.suggestion}\n\n`;
+        });
+      }
+      
+      // Collaboration gaps
+      if (insights.collaborationGaps.length > 0) {
+        message += '*Collaboration Gaps:*\n';
+        insights.collaborationGaps.forEach(gap => {
+          const severity = gap.severity === 'high' ? '🔴' : gap.severity === 'medium' ? '🟡' : '🟢';
+          message += `${severity} ${gap.description}\n  ${gap.suggestion}\n\n`;
+        });
+      }
+      
+      if (insights.pendingRisks.length === 0 && insights.optimizationOpportunities.length === 0 && insights.collaborationGaps.length === 0) {
+        message += '✅ No immediate issues detected. Team is performing well!';
+      }
+      
+      await client.chat.postMessage({
+        channel: channelId,
+        text: message,
+      });
+      
+    } catch (error) {
+      console.error('Error generating proactive insights:', error);
+      await client.chat.postMessage({
+        channel: channelId,
+        text: '❌ Error generating proactive insights.',
       });
     }
   }

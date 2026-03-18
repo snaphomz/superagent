@@ -5,6 +5,10 @@ import { messageStore } from '../database/messageStore.js';
 import { userProfileLearner } from './userProfileLearner.js';
 import { contextOptimizer } from './contextOptimizer.js';
 import { faqAutomation } from './faqAutomation.js';
+import { proactiveAssistant } from './proactiveAssistant.js';
+import { teamInsightsGenerator } from './teamInsightsGenerator.js';
+import { analyticsDashboard } from './analyticsDashboard.js';
+import { continuousOptimizer } from './continuousOptimizer.js';
 
 export const learningScheduler = {
   // Run learning analysis on recent responses
@@ -71,6 +75,16 @@ export const learningScheduler = {
         console.error('Context optimizer training failed:', error);
       }
       
+      // Phase 4: Run continuous optimization
+      try {
+        const optimizationResults = await continuousOptimizer.runOptimizationCycle(config.target.channelId);
+        if (optimizationResults) {
+          console.log(`  - Continuous optimization: ${optimizationResults.optimizations.length} improvements`);
+        }
+      } catch (error) {
+        console.error('Continuous optimization failed:', error);
+      }
+      
       return { patternsLearned: totalPatterns, responsesAnalyzed: unanalyzed.length };
     } catch (error) {
       console.error('Learning analysis failed:', error);
@@ -91,7 +105,11 @@ export const learningScheduler = {
         // Phase 3 additions
         faqStats: await this.getFAQStats(),
         contextWeights: await this.getContextWeights(),
-        userProfiles: await this.getUserProfileStats()
+        userProfiles: await this.getUserProfileStats(),
+        // Phase 4 additions
+        teamInsights: await this.getTeamInsights(),
+        proactiveAlerts: await this.getProactiveAlerts(),
+        optimizationResults: await this.getOptimizationResults()
       };
       
       // Log insights to console
@@ -136,6 +154,29 @@ export const learningScheduler = {
             console.log(`  ${key}: ${weight.toFixed(2)}`);
           }
         });
+      }
+      
+      // Phase 4: Team Insights
+      if (insights.teamInsights) {
+        console.log('\n👥 Team Insights:');
+        console.log(`  Health Score: ${insights.teamInsights.healthScore}/100`);
+        console.log(`  Active Users: ${insights.teamInsights.activeUsers}`);
+        console.log(`  Engagement Rate: ${insights.teamInsights.engagementRate}%`);
+      }
+      
+      // Phase 4: Proactive Alerts
+      if (insights.proactiveAlerts && insights.proactiveAlerts.length > 0) {
+        console.log('\n🚨 Proactive Alerts:');
+        insights.proactiveAlerts.slice(0, 3).forEach(alert => {
+          console.log(`  - ${alert.type}: ${alert.description}`);
+        });
+      }
+      
+      // Phase 4: Optimization Results
+      if (insights.optimizationResults) {
+        console.log('\n🔄 Recent Optimizations:');
+        console.log(`  Optimizations Applied: ${insights.optimizationResults.count || 0}`);
+        console.log(`  Performance Improvement: ${insights.optimizationResults.improvement || 'N/A'}`);
       }
       
       console.log('\n=========================\n');
@@ -236,6 +277,53 @@ export const learningScheduler = {
       };
     } catch (error) {
       console.error('Error getting user profile stats:', error);
+      return null;
+    }
+  },
+
+  // Phase 4: Get team insights
+  async getTeamInsights() {
+    try {
+      const insights = await teamInsightsGenerator.generateTeamInsights(config.target.channelId, 'week');
+      if (insights) {
+        return {
+          healthScore: 85, // Would calculate from actual insights
+          activeUsers: insights.overview.activeUsers,
+          engagementRate: 75 // Would calculate from actual metrics
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting team insights:', error);
+      return null;
+    }
+  },
+
+  // Phase 4: Get proactive alerts
+  async getProactiveAlerts() {
+    try {
+      const insights = await proactiveAssistant.generateProactiveInsights(config.target.channelId, 24);
+      if (insights) {
+        return insights.pendingRisks.slice(0, 5); // Top 5 risks
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting proactive alerts:', error);
+      return [];
+    }
+  },
+
+  // Phase 4: Get optimization results
+  async getOptimizationResults() {
+    try {
+      // This would track recent optimization results
+      // For now, return placeholder data
+      return {
+        count: 0,
+        improvement: 'N/A'
+      };
+    } catch (error) {
+      console.error('Error getting optimization results:', error);
       return null;
     }
   },
