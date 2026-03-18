@@ -162,7 +162,7 @@ export const responseGenerator = {
       console.log(`Context Messages: ${contextString.split('\n').length}`);
       
       const completion = await openai.chat.completions.create({
-        model: 'gpt-5',
+        model: GPT_MODEL,
         messages: [
           { role: 'system', content: prompts.system },
           { role: 'user', content: prompts.user },
