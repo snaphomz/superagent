@@ -22,9 +22,9 @@ export const dailySummary = {
   },
 
   scheduleDailySummary() {
-    // Send daily summary at 6:30 PM IST every weekday
+    // Send daily summary at 5:30 PM IST every weekday (7:00 AM PST next day)
     dailySummaryJob = cron.schedule(
-      '30 18 * * 1-6',
+      '30 17 * * 1-6',
       async () => {
         await this.sendDailySummary();
       },
@@ -136,6 +136,9 @@ export const dailySummary = {
       const summary = await jibbleMonitor.getWorkHoursSummary(date);
       
       const sections = [];
+      let totalHours = 0;
+      let presentCount = 0;
+      let lateCount = 0;
       
       for (const [userName, data] of Object.entries(summary)) {
         const clockInTime = data.first_clock_in 
@@ -152,24 +155,49 @@ export const dailySummary = {
               minute: '2-digit',
               timeZone: 'Asia/Kolkata'
             })
-          : 'Still working';
+          : 'N/A';
         
-        const status = data.status === 'clocked_in' ? '🟢 Working' : '⚪ Clocked Out';
+        const workHours = data.total_work_hours || 0;
+        totalHours += workHours;
+        
+        if (workHours > 0) presentCount++;
+        if (clockInTime !== 'N/A' && clockInTime > '10:00') lateCount++;
+        
+        // Create detailed attendance entry
+        const attendanceDetails = [];
+        attendanceDetails.push(`Clock In: ${clockInTime}`);
+        if (clockOutTime !== 'N/A') attendanceDetails.push(`Clock Out: ${clockOutTime}`);
+        attendanceDetails.push(`Hours: ${workHours.toFixed(1)}`);
+        
+        if (data.break_duration && data.break_duration > 0) {
+          attendanceDetails.push(`Break: ${(data.break_duration / 60).toFixed(1)}h`);
+        }
         
         sections.push({
           user: userName,
-          clockIn: clockInTime,
-          clockOut: clockOutTime,
-          hours: data.total_work_hours,
-          breaks: data.total_break_minutes,
-          status: status
+          status: workHours > 0 ? '✅ Present' : '❌ Absent',
+          details: attendanceDetails.join(' • ')
         });
       }
       
-      return sections;
+      // Add summary statistics
+      const summaryStats = [
+        `Total Present: ${presentCount}/${sections.length}`,
+        `Total Hours: ${totalHours.toFixed(1)}`,
+        `Late Arrivals: ${lateCount}`
+      ];
+      
+      return {
+        summary: summaryStats.join(' • '),
+        sections: sections,
+        totalMembers: sections.length,
+        presentCount: presentCount,
+        totalHours: totalHours
+      };
+      
     } catch (error) {
       console.error('Error generating Jibble section:', error);
-      return [];
+      return { summary: 'Error fetching Jibble data', sections: [], totalMembers: 0 };
     }
   },
 
@@ -332,6 +360,19 @@ Format as JSON:
         const member = teamMembers.find(m => m.user_id === msg.user_id);
         const name = member?.display_name || member?.real_name || msg.user_id;
         const eodData = eodDetector.extractUpdateComponents(msg.text);
+        const analysis = eodDetector.analyzeCompleteness(eodData);
+
+        // Create detailed EOD entry
+        const details = [];
+        if (eodData.purpose) details.push(`Purpose: ${eodData.purpose}`);
+        if (eodData.process) details.push(`Process: ${eodData.process}`);
+        if (eodData.payoff) details.push(`Payoff: ${eodData.payoff}`);
+        
+        // Add completion status
+        const status = analysis.issues.length === 0 ? '✅ Complete' : '⚠️ Incomplete';
+        if (analysis.issues.length > 0) {
+          details.push(`Issues: ${analysis.issues.join(', ')}`);
+        }
 
         return {
           user: name,
@@ -340,10 +381,14 @@ Format as JSON:
           purpose: eodData?.purpose || null,
           process: eodData?.process || null,
           payoff: eodData?.payoff || null,
+          status: status,
+          details: details.join('\n'),
+          completeness: analysis.completeness || 0,
+          issues: analysis.issues || []
         };
       });
-      
-      // Use AI to analyze EOD updates for red flags and insights
+
+      // Analyze all updates for red flags and insights
       const analysis = await this.analyzeEODUpdates(items);
       
       return {
@@ -439,19 +484,21 @@ Focus on:
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*⏰ Jibble Attendance Report*\n${jibbleReport.length} team members tracked`
+        text: `*⏰ Jibble Attendance Report*\n${jibbleReport.summary}`
       }
     });
 
-    jibbleReport.forEach(member => {
-      blocks.push({
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*${member.user}*\n• Clock In: ${member.clockIn}\n• Clock Out: ${member.clockOut}\n• Hours: ${member.hours}h | Breaks: ${member.breaks}m\n• Status: ${member.status}`
-        }
+    if (jibbleReport.sections && jibbleReport.sections.length > 0) {
+      jibbleReport.sections.forEach(member => {
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `${member.status} *${member.user}*\n${member.details}`
+          }
+        });
       });
-    });
+    }
 
     blocks.push({ type: 'divider' });
 
@@ -486,6 +533,19 @@ Focus on:
         text: `*📝 EOD Updates & Analysis*\n${eodReport.summary}`
       }
     });
+
+    // Add individual EOD updates with status
+    if (eodReport.items && eodReport.items.length > 0) {
+      eodReport.items.forEach(item => {
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `${item.status} *${item.user}*\n${item.details}`
+          }
+        });
+      });
+    }
 
     // Add AI Analysis Summary
     if (eodReport.analysis) {
