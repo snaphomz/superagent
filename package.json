@@ -5,10 +5,10 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node hybrid-server.js",
-    "dev": "nodemon hybrid-server.js",
+    "start": "node simple-server.js",
+    "dev": "nodemon simple-server.js",
     "train": "node src/trainer.js",
-    "simple": "node simple-server.js",
+    "hybrid": "node hybrid-server.js",
     "full": "node src/index.js"
   },
   "dependencies": {
