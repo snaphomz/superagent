@@ -8,6 +8,7 @@ import { eodDetector } from '../utils/eodDetector.js';
 import { yesterdayIST } from '../utils/dateUtils.js';
 import db from '../database/postgres.js';
 import { learningEngine } from '../learning/learningEngine.js';
+import { adaptivePromptBuilder } from '../learning/adaptivePromptBuilder.js';
 
 export const responseGenerator = {
   async generateResponse(message, userInfo = null, options = {}) {
@@ -137,14 +138,27 @@ export const responseGenerator = {
         console.error('⚠️ Could not fetch recent responses for dedup:', err.message);
       }
 
-      const prompts = await promptBuilder.buildFullPrompt(
+      // Build prompts with learning enhancement
+      let systemPrompt;
+      try {
+        // Try adaptive prompt builder first
+        systemPrompt = await adaptivePromptBuilder.buildAdaptiveSystemPrompt(
+          config.target.userId,
+          message.channel,
+          actualMessageType
+        );
+        console.log('🧠 Using adaptive prompt with learned patterns');
+      } catch (error) {
+        console.log('⚠️ Falling back to standard prompt builder');
+        systemPrompt = await promptBuilder.buildSystemPrompt(config.target.userId, message.channel);
+      }
+
+      const userPrompt = await promptBuilder.buildUserPrompt(
         contextString,
         message.text,
         actualMessageType,
-        config.target.userId,
         eodContext,
         userInfo,
-        message.channel,
         recentBotResponses,
         options
       );
@@ -160,8 +174,8 @@ export const responseGenerator = {
       const completion = await openai.chat.completions.create({
         model: GPT_MODEL,
         messages: [
-          { role: 'system', content: prompts.system },
-          { role: 'user', content: prompts.user },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
         ],
         temperature: 0.7,
         max_tokens: 500,
@@ -169,10 +183,20 @@ export const responseGenerator = {
 
       const generatedResponse = completion.choices[0].message.content.trim();
       
-      const confidenceScore = this.calculateConfidence(generatedResponse, messageType);
+      // Predict effectiveness before returning
+      const effectiveness = await adaptivePromptBuilder.predictResponseEffectiveness(
+        generatedResponse,
+        contextString,
+        actualMessageType
+      );
+      
+      // Adjust confidence based on predicted effectiveness
+      let confidenceScore = this.calculateConfidence(generatedResponse, messageType);
+      confidenceScore = (confidenceScore * 0.7) + (effectiveness * 30); // Weight effectiveness
       
       console.log(`Generated Response: "${generatedResponse}"`);
       console.log(`Confidence Score: ${confidenceScore.toFixed(1)}%`);
+      console.log(`Predicted Effectiveness: ${(effectiveness * 100).toFixed(1)}%`);
       console.log('===========================\n');
 
       return {
@@ -181,6 +205,7 @@ export const responseGenerator = {
         messageType: actualMessageType,
         context: contextString,
         eodContext,
+        effectiveness,
       };
     } catch (error) {
       console.error('Error generating response:', error);

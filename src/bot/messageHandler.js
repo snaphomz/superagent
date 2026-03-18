@@ -12,6 +12,7 @@ import { setScheduleException } from '../scheduler/checkinValidator.js';
 import { pendingQuestions } from '../utils/pendingQuestions.js';
 import { todayIST } from '../utils/dateUtils.js';
 import { feedbackCollector } from '../learning/feedbackCollector.js';
+import { responseValidator } from '../learning/responseValidator.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -280,10 +281,25 @@ export const messageHandler = {
         
         console.log(`✅ Response generated: "${result.response?.substring(0, 50)}..." (confidence: ${result.confidence})`);
         
-        const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
+        // Validate response before sending
+        const validation = await responseValidator.validateResponse(
+          result.response,
+          result.context,
+          result.messageType,
+          result.confidence
+        );
+        
+        console.log(`🔍 Validation: ${validation.isValid ? 'PASS' : 'NEEDS REVIEW'} (adjusted confidence: ${validation.adjustedConfidence.toFixed(1)}%)`);
+        
+        if (!validation.isValid) {
+          console.log('⚠️ Validation warnings:');
+          validation.warnings.forEach(w => console.log(`  - ${w}`));
+        }
+        
+        const shouldAutoSend = await responseGenerator.shouldAutoSend(validation.adjustedConfidence);
         
         if (shouldAutoSend) {
-          console.log(`✅ Auto-sending response (confidence: ${result.confidence.toFixed(1)}%)`);
+          console.log(`✅ Auto-sending response (confidence: ${validation.adjustedConfidence.toFixed(1)}%)`);
         
         await new Promise(resolve => setTimeout(resolve, config.bot.responseDelay * 1000));
         
@@ -298,7 +314,7 @@ export const messageHandler = {
           message.channel,
           result.context,
           result.response,
-          result.confidence,
+          validation.adjustedConfidence,
           true,
           new Date().toISOString()
         );

@@ -8,6 +8,7 @@ import { strikeEvaluator } from '../scheduler/strikeEvaluator.js';
 import { channelDigest } from '../ai/channelDigest.js';
 import { todayIST } from '../utils/dateUtils.js';
 import { feedbackCollector } from '../learning/feedbackCollector.js';
+import { learningCommands } from '../learning/learningCommands.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -218,16 +219,51 @@ export function createSlackBot() {
             const bStr = Object.entries(breakdown).map(([t, c]) => `${t}: ${c}`).join(', ');
             const flag = row.escalated ? ' ⚠️ *ESCALATED*' : '';
             report += `• *${name}*: ${row.total_strikes} strike${row.total_strikes !== 1 ? 's' : ''}${flag}`;
-            if (bStr) report += ` _(${bStr})_`;
-            report += '\n';
           }
         }
+        
         await client.chat.postMessage({ channel: ANTONY_USER_ID, text: report });
+        return;
       } catch (error) {
-        console.error('Error handling !strikes command:', error);
+        console.error('Error handling !strikes weekly command:', error);
         await client.chat.postMessage({
           channel: ANTONY_USER_ID,
-          text: `❌ Error running strikes report: ${error.message}`,
+          text: '❌ Error generating weekly strike report.',
+        });
+        return;
+      }
+    }
+
+    // Handle learning commands
+    if (message.text && message.text.trim().toLowerCase().startsWith('!learning')) {
+      if (message.user !== ANTONY_USER_ID) {
+        console.log(`⛔ Unauthorized learning command by ${message.user}`);
+        return;
+      }
+
+      const parts = message.text.trim().split(/\s+/);
+      const subCmd = parts[1]?.toLowerCase();
+
+      try {
+        if (subCmd === 'insights') {
+          await learningCommands.handleLearningInsights(client, message.channel);
+        } else if (subCmd === 'patterns') {
+          const patternType = parts[2] || 'all';
+          await learningCommands.handlePatternDetails(client, message.channel, patternType);
+        } else if (subCmd === 'feedback') {
+          const hours = parseInt(parts[2]) || 24;
+          await learningCommands.handleRecentFeedback(client, message.channel, hours);
+        } else {
+          await client.chat.postMessage({
+            channel: message.channel,
+            text: `📚 *Learning Commands:*\n• \`!learning insights\` - View learning insights report\n• \`!learning patterns [type]\` - View pattern details\n• \`!learning feedback [hours]\` - View recent feedback\n\nPattern types: all, style_pattern, eod_template, question_template`,
+          });
+        }
+      } catch (error) {
+        console.error('Error handling learning command:', error);
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: '❌ Error processing learning command.',
         });
       }
       return;
