@@ -9,6 +9,7 @@ import { channelDigest } from '../ai/channelDigest.js';
 import { todayIST } from '../utils/dateUtils.js';
 import { feedbackCollector } from '../learning/feedbackCollector.js';
 import { learningCommands } from '../learning/learningCommands.js';
+import { dailySummary } from '../scheduler/dailySummary.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -276,6 +277,66 @@ export function createSlackBot() {
         await client.chat.postMessage({
           channel: message.channel,
           text: '❌ Error processing learning command.',
+        });
+      }
+      return;
+    }
+
+    // Handle EOD collection commands — Antony-only
+    if (message.text && message.text.trim().toLowerCase().startsWith('!eod')) {
+      if (message.user !== ANTONY_USER_ID) {
+        console.log(`⛔ Unauthorized EOD command by ${message.user}`);
+        return;
+      }
+
+      const parts = message.text.trim().split(/\s+/);
+      const subCmd = parts[1]?.toLowerCase();
+
+      try {
+        if (subCmd === 'collect') {
+          const triggered = await dailySummary.triggerEODCollection();
+          if (triggered) {
+            await client.chat.postMessage({
+              channel: message.channel,
+              text: '📝 EOD collection started! Checking who hasn\'t submitted updates...',
+            });
+          } else {
+            await client.chat.postMessage({
+              channel: message.channel,
+              text: '⚠️ EOD collection already in progress.',
+            });
+          }
+        } else if (subCmd === 'status') {
+          const status = dailySummary.getEODCollectionStatus();
+          if (status.isCollecting) {
+            const missing = status.missingMembers.map(m => m.display_name || m.real_name).join(', ') || 'None';
+            await client.chat.postMessage({
+              channel: message.channel,
+              text: `📝 *EOD Collection Status*\n\nStatus: In Progress\nMissing: ${missing}\nReminded: ${status.remindedMembers.size}\nFinal Reminder: ${status.finalReminderSent ? 'Yes' : 'No'}`,
+            });
+          } else {
+            await client.chat.postMessage({
+              channel: message.channel,
+              text: '📝 No EOD collection in progress right now.',
+            });
+          }
+        } else if (subCmd === 'summary') {
+          await client.chat.postMessage({
+            channel: message.channel,
+            text: '📊 Generating daily summary now...',
+          });
+          await dailySummary.sendNow();
+        } else {
+          await client.chat.postMessage({
+            channel: message.channel,
+            text: `📝 *EOD Commands:*\n• \`!eod collect\` - Start EOD collection process\n• \`!eod status\` - Check collection status\n• \`!eod summary\` - Send summary immediately`,
+          });
+        }
+      } catch (error) {
+        console.error('Error handling EOD command:', error);
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: '❌ Error processing EOD command.',
         });
       }
       return;

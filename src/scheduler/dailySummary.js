@@ -5,6 +5,7 @@ import { obiTeamMonitor } from '../monitors/obiTeamMonitor.js';
 import { eodSummary } from './eodSummary.js';
 import { strikeEvaluator } from './strikeEvaluator.js';
 import { channelDigest } from '../ai/channelDigest.js';
+import { eodCollector } from './eodCollector.js';
 import db from '../database/postgres.js';
 
 let dailySummaryJob = null;
@@ -17,8 +18,10 @@ const ANTONY_ID = config.target.userId;
 export const dailySummary = {
   initialize(client) {
     slackClient = client;
-    this.scheduleDailySummary();
-    console.log('📊 Daily summary scheduler initialized');
+    // Initialize EOD collector instead of scheduling daily summary
+    eodCollector.initialize(client);
+    // Don't schedule daily summary anymore - EOD collector handles it
+    console.log('📊 Daily summary scheduler initialized (now managed by EOD collector)');
   },
 
   scheduleDailySummary() {
@@ -713,5 +716,15 @@ Focus on:
   // For testing - send immediately
   async sendNow() {
     await this.sendDailySummary();
+  },
+
+  // Manual trigger for EOD collection
+  async triggerEODCollection() {
+    return await eodCollector.triggerEODCollection();
+  },
+
+  // Get EOD collection status
+  getEODCollectionStatus() {
+    return eodCollector.getCollectionStatus();
   }
 };
