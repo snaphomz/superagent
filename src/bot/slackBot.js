@@ -253,10 +253,14 @@ export function createSlackBot() {
         } else if (subCmd === 'feedback') {
           const hours = parseInt(parts[2]) || 24;
           await learningCommands.handleRecentFeedback(client, message.channel, hours);
+        } else if (subCmd === 'faq') {
+          await learningCommands.handleFAQDetails(client, message.channel);
+        } else if (subCmd === 'context') {
+          await learningCommands.handleContextWeights(client, message.channel);
         } else {
           await client.chat.postMessage({
             channel: message.channel,
-            text: `📚 *Learning Commands:*\n• \`!learning insights\` - View learning insights report\n• \`!learning patterns [type]\` - View pattern details\n• \`!learning feedback [hours]\` - View recent feedback\n\nPattern types: all, style_pattern, eod_template, question_template`,
+            text: `📚 *Learning Commands:*\n• \`!learning insights\` - View learning insights report\n• \`!learning patterns [type]\` - View pattern details\n• \`!learning feedback [hours]\` - View recent feedback\n• \`!learning faq\` - View FAQ automation details\n• \`!learning context\` - View context optimization weights\n\nPattern types: all, style_pattern, eod_template, question_template`,
           });
         }
       } catch (error) {

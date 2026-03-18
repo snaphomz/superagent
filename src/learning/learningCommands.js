@@ -1,6 +1,8 @@
 import { learningScheduler } from './learningScheduler.js';
 import { patternsStore } from './patternsStore.js';
 import { feedbackStore } from './feedbackStore.js';
+import { faqAutomation } from './faqAutomation.js';
+import { contextOptimizer } from './contextOptimizer.js';
 
 export const learningCommands = {
   // Handle learning insights command
@@ -54,6 +56,26 @@ export const learningCommands = {
         });
       } else {
         message += '✅ *Performance:* All systems operating effectively!\n';
+      }
+      
+      // Phase 3: FAQ Statistics
+      if (insights.faqStats) {
+        message += '\n📚 *FAQ Automation:*\n';
+        message += `• Total patterns: ${insights.faqStats.totalPatterns}\n`;
+        message += `• Average success: ${(insights.faqStats.averageSuccessRate * 100).toFixed(1)}%\n`;
+        if (insights.faqStats.mostUsed) {
+          message += `• Most used: "${insights.faqStats.mostUsed.value.question.substring(0, 50)}..." (${insights.faqStats.mostUsed.usage_count} times)\n`;
+        }
+      }
+      
+      // Phase 3: Context Optimization
+      if (insights.contextWeights) {
+        message += '\n⚖️ *Context Weights:*\n';
+        const weightEntries = Object.entries(insights.contextWeights).filter(([_, v]) => typeof v === 'number');
+        weightEntries.slice(0, 3).forEach(([key, weight]) => {
+          const displayName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          message += `• ${displayName}: ${weight.toFixed(2)}\n`;
+        });
       }
       
       await client.chat.postMessage({
@@ -177,6 +199,103 @@ export const learningCommands = {
       await client.chat.postMessage({
         channel: channelId,
         text: '❌ Error retrieving feedback data.',
+      });
+    }
+  },
+
+  // Handle FAQ details command
+  async handleFAQDetails(client, channelId) {
+    try {
+      const faqStats = await faqAutomation.getFAQStats();
+      const allFAQs = await faqAutomation.getAllFAQs();
+      
+      if (allFAQs.length === 0) {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: '📚 No FAQ patterns learned yet. The bot needs more question interactions to build FAQs.',
+        });
+        return;
+      }
+      
+      let message = '📚 *FAQ Automation Details*\n\n';
+      
+      // Overview
+      message += `*Overview:*\n`;
+      message += `• Total patterns: ${faqStats.totalPatterns}\n`;
+      message += `• Average success: ${(faqStats.averageSuccessRate * 100).toFixed(1)}%\n`;
+      message += `• Most used: ${faqStats.mostUsed ? `"${faqStats.mostUsed.value.question.substring(0, 40)}..." (${faqStats.mostUsed.usage_count}x)` : 'N/A'}\n`;
+      message += `• Highest success: ${faqStats.highestSuccess ? `"${faqStats.highestSuccess.value.question.substring(0, 40)}..." (${(faqStats.highestSuccess.success_rate * 100).toFixed(1)}%)` : 'N/A'}\n\n`;
+      
+      // By type
+      message += `*By Question Type:*\n`;
+      Object.entries(faqStats.byType).forEach(([type, stats]) => {
+        const typeName = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const avgSuccess = (stats.totalSuccess / stats.count * 100).toFixed(1);
+        message += `• ${typeName}: ${stats.count} patterns (${avgSuccess}% avg success)\n`;
+      });
+      
+      // Top patterns
+      message += `\n*Top 5 Patterns:*\n`;
+      allFAQs.slice(0, 5).forEach((faq, i) => {
+        const success = (faq.success_rate * 100).toFixed(1);
+        const question = faq.value.question.substring(0, 60);
+        message += `${i+1}. "${question}..." - ${success}% (${faq.usage_count} uses)\n`;
+      });
+      
+      await client.chat.postMessage({
+        channel: channelId,
+        text: message,
+      });
+      
+    } catch (error) {
+      console.error('Error getting FAQ details:', error);
+      await client.chat.postMessage({
+        channel: channelId,
+        text: '❌ Error retrieving FAQ details.',
+      });
+    }
+  },
+
+  // Handle context weights command
+  async handleContextWeights(client, channelId) {
+    try {
+      const weights = await contextOptimizer.getCurrentWeights();
+      const report = await contextOptimizer.getOptimizationReport();
+      
+      let message = '⚖️ *Context Optimization Weights*\n\n';
+      
+      message += '*Global Weights:*\n';
+      Object.entries(weights).forEach(([key, weight]) => {
+        if (typeof weight === 'number') {
+          const displayName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          message += `• ${displayName}: ${weight.toFixed(2)}\n`;
+        }
+      });
+      
+      if (report && report.messageTypeSpecific) {
+        message += '\n*Message Type Specific:*\n';
+        Object.entries(report.messageTypeSpecific).forEach(([type, typeWeights]) => {
+          const typeName = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          message += `\n*${typeName}:*\n`;
+          Object.entries(typeWeights).forEach(([key, weight]) => {
+            if (typeof weight === 'number') {
+              const displayName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              message += `  - ${displayName}: ${weight.toFixed(2)}\n`;
+            }
+          });
+        });
+      }
+      
+      await client.chat.postMessage({
+        channel: channelId,
+        text: message,
+      });
+      
+    } catch (error) {
+      console.error('Error getting context weights:', error);
+      await client.chat.postMessage({
+        channel: channelId,
+        text: '❌ Error retrieving context weights.',
       });
     }
   }

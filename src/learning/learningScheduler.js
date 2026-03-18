@@ -2,6 +2,9 @@ import { learningEngine } from './learningEngine.js';
 import { feedbackCollector } from './feedbackCollector.js';
 import { patternsStore } from './patternsStore.js';
 import { messageStore } from '../database/messageStore.js';
+import { userProfileLearner } from './userProfileLearner.js';
+import { contextOptimizer } from './contextOptimizer.js';
+import { faqAutomation } from './faqAutomation.js';
 
 export const learningScheduler = {
   // Run learning analysis on recent responses
@@ -47,6 +50,27 @@ export const learningScheduler = {
       console.log(`  - Patterns learned: ${totalPatterns}`);
       console.log(`  - Average success: ${totalSuccess > 0 ? (totalSuccess / unanalyzed.length).toFixed(2) : 'N/A'}`);
       
+      // Phase 3: Extract FAQ patterns
+      try {
+        const responses = unanalyzed.map(log => log.generated_response);
+        const feedback = await Promise.all(
+          unanalyzed.map(log => feedbackStore.getFeedbackForResponse(log.id))
+        );
+        
+        const faqPatterns = await faqAutomation.extractFAQPatterns(responses, feedback);
+        console.log(`  - FAQ patterns extracted: ${faqPatterns.length}`);
+      } catch (error) {
+        console.error('FAQ extraction failed:', error);
+      }
+      
+      // Phase 3: Train context optimizer
+      try {
+        await contextOptimizer.trainWithRecentData(hours);
+        console.log(`  - Context weights trained`);
+      } catch (error) {
+        console.error('Context optimizer training failed:', error);
+      }
+      
       return { patternsLearned: totalPatterns, responsesAnalyzed: unanalyzed.length };
     } catch (error) {
       console.error('Learning analysis failed:', error);
@@ -63,7 +87,11 @@ export const learningScheduler = {
         topPatterns: await this.getTopPatterns(),
         feedbackTrends: await this.getFeedbackTrends(),
         improvementAreas: await this.getImprovementAreas(),
-        successMetrics: await this.getSuccessMetrics()
+        successMetrics: await this.getSuccessMetrics(),
+        // Phase 3 additions
+        faqStats: await this.getFAQStats(),
+        contextWeights: await this.getContextWeights(),
+        userProfiles: await this.getUserProfileStats()
       };
       
       // Log insights to console
@@ -87,6 +115,26 @@ export const learningScheduler = {
         console.log('\n🎯 Areas for Improvement:');
         insights.improvementAreas.forEach(area => {
           console.log(`  - ${area}`);
+        });
+      }
+      
+      // Phase 3: FAQ Statistics
+      if (insights.faqStats) {
+        console.log('\n📚 FAQ Automation:');
+        console.log(`  Total patterns: ${insights.faqStats.totalPatterns}`);
+        console.log(`  Average success: ${(insights.faqStats.averageSuccessRate * 100).toFixed(1)}%`);
+        if (insights.faqStats.mostUsed) {
+          console.log(`  Most used: "${insights.faqStats.mostUsed.value.question}" (${insights.faqStats.mostUsed.usage_count} times)`);
+        }
+      }
+      
+      // Phase 3: Context Weights
+      if (insights.contextWeights) {
+        console.log('\n⚖️ Context Weights:');
+        Object.entries(insights.contextWeights).forEach(([key, weight]) => {
+          if (typeof weight === 'number') {
+            console.log(`  ${key}: ${weight.toFixed(2)}`);
+          }
         });
       }
       
@@ -154,6 +202,42 @@ export const learningScheduler = {
     const totalUsage = allPatterns.reduce((sum, p) => sum + p.usage_count, 0);
     
     return { avgSuccessRate, totalUsage };
+  },
+
+  // Phase 3: Get FAQ statistics
+  async getFAQStats() {
+    try {
+      return await faqAutomation.getFAQStats();
+    } catch (error) {
+      console.error('Error getting FAQ stats:', error);
+      return null;
+    }
+  },
+
+  // Phase 3: Get context weights
+  async getContextWeights() {
+    try {
+      return await contextOptimizer.getCurrentWeights();
+    } catch (error) {
+      console.error('Error getting context weights:', error);
+      return null;
+    }
+  },
+
+  // Phase 3: Get user profile statistics
+  async getUserProfileStats() {
+    try {
+      // This would need to be implemented in userProfileLearner
+      // For now, return placeholder data
+      return {
+        totalProfiles: 0,
+        profilesWithPreferences: 0,
+        averagePreferences: 0
+      };
+    } catch (error) {
+      console.error('Error getting user profile stats:', error);
+      return null;
+    }
   },
 
   // Helper to detect message type from context

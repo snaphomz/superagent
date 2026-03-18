@@ -9,11 +9,31 @@ import { yesterdayIST } from '../utils/dateUtils.js';
 import db from '../database/postgres.js';
 import { learningEngine } from '../learning/learningEngine.js';
 import { adaptivePromptBuilder } from '../learning/adaptivePromptBuilder.js';
+import { faqAutomation } from '../learning/faqAutomation.js';
 
 export const responseGenerator = {
   async generateResponse(message, userInfo = null, options = {}) {
     try {
       const messageType = contextBuilder.detectMessageType(message.text);
+      
+      // Check for FAQ answer if this is a question
+      if (messageType === 'question') {
+        const faqAnswer = await faqAutomation.getFAQAnswer(message.text);
+        if (faqAnswer && faqAnswer.confidence > 0.8) {
+          console.log(`📚 Found FAQ answer (confidence: ${(faqAnswer.confidence * 100).toFixed(1)}%)`);
+          
+          return {
+            response: faqAnswer.answer,
+            confidence: faqAnswer.confidence * 100,
+            messageType: 'faq_answer',
+            context: contextString,
+            faqInfo: {
+              questionType: faqAnswer.questionType,
+              entities: faqAnswer.entities
+            }
+          };
+        }
+      }
       
       const contextString = await contextBuilder.buildContextString(
         message.channel,
