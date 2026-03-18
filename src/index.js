@@ -161,12 +161,26 @@ process.on('SIGINT', async () => {
     });
   }
   
-  db.close((err) => {
-    if (err) {
-      console.error('Error closing database:', err);
-    } else {
-      console.log('Database closed');
-    }
+  // Close database connection
+  if (db && typeof db.end === 'function') {
+    db.end((err) => {
+      if (err) {
+        console.error('Error closing database:', err);
+      } else {
+        console.log('Database closed');
+      }
+      process.exit(0);
+    });
+  } else if (db && typeof db.close === 'function') {
+    db.close((err) => {
+      if (err) {
+        console.error('Error closing database:', err);
+      } else {
+        console.log('Database closed');
+      }
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });

@@ -134,12 +134,24 @@ async function main() {
     console.error('\n❌ Training failed:', error);
     process.exit(1);
   } finally {
-    db.close((err) => {
-      if (err) {
-        console.error('Error closing database:', err);
-      }
+    // Close database connection
+    if (db && typeof db.end === 'function') {
+      db.end((err) => {
+        if (err) {
+          console.error('Error closing database:', err);
+        }
+        process.exit(0);
+      });
+    } else if (db && typeof db.close === 'function') {
+      db.close((err) => {
+        if (err) {
+          console.error('Error closing database:', err);
+        }
+        process.exit(0);
+      });
+    } else {
       process.exit(0);
-    });
+    }
   }
 }
 
