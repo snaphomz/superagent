@@ -9,6 +9,7 @@ import { eodSummary } from './scheduler/eodSummary.js';
 import { hydrationReminder } from './scheduler/hydrationReminder.js';
 import { dailySummary } from './scheduler/dailySummary.js';
 import { strikeEvaluator } from './scheduler/strikeEvaluator.js';
+import { eodWebhook } from './api/eodWebhook.js';
 import http from 'http';
 
 let healthCheckServer;
@@ -69,6 +70,12 @@ async function main() {
         res.writeHead(400, { 'Content-Type': 'text/html' });
         res.end('<html><body><h1>Missing authorization code</h1></body></html>');
       }
+    } else if (url.pathname === '/eod/trigger') {
+      // Handle EOD collection trigger
+      await eodWebhook.handleEODTrigger(req, res);
+    } else if (url.pathname === '/eod/status') {
+      // Handle EOD status check
+      await eodWebhook.handleStatusCheck(req, res);
     } else {
       res.writeHead(404);
       res.end('Not Found');
