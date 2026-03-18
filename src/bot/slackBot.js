@@ -20,6 +20,9 @@ export function createSlackBot() {
   });
 
   app.message(async ({ message, client }) => {
+    // Debug: Log all messages for troubleshooting
+    console.log(`📨 Message received: "${message.text}" from user ${message.user} in channel ${message.channel}`);
+    
     // Only allow Antony to use bot commands
     const ANTONY_USER_ID = config.target.userId;
     
@@ -282,6 +285,20 @@ export function createSlackBot() {
       return;
     }
 
+    // Handle test command to verify bot is working
+    if (message.text && message.text.trim().toLowerCase() === '!test') {
+      console.log('🧪 Test command received');
+      try {
+        await client.chat.postMessage({
+          channel: message.channel,
+          text: `✅ Bot is working! Received message from <@${message.user}> in channel <#${message.channel}>`,
+        });
+      } catch (error) {
+        console.error('Error sending test response:', error);
+      }
+      return;
+    }
+
     // Handle EOD collection commands
     if (message.text && message.text.trim().toLowerCase().startsWith('!eod')) {
       console.log(`🔍 EOD command detected: "${message.text}" from user ${message.user} in channel ${message.channel}`);
@@ -523,6 +540,9 @@ export function createSlackBot() {
     }
 
     await messageHandler.handleMessage(message, client);
+    
+    // Debug: Log that message was passed to messageHandler
+    console.log(`📤 Message passed to messageHandler: "${message.text}"`);
   });
 
   app.action('approve_response', async ({ body, ack, client }) => {
