@@ -182,9 +182,9 @@ const messageStore = usePostgres ? messageStorePostgres : {
         log.confidenceScore,
         log.autoSent ? 1 : 0,
         log.sentAt || null,
-        (err) => {
+        function(err) {
           if (err) reject(err);
-          else resolve();
+          else resolve({ id: this.lastID, created_at: new Date().toISOString() });
         }
       );
 
@@ -202,6 +202,22 @@ const messageStore = usePostgres ? messageStorePostgres : {
         (err, rows) => {
           if (err) reject(err);
           else resolve(rows);
+        }
+      );
+    });
+  },
+
+  getResponseByTimestamp(timestamp, channelId) {
+    return new Promise((resolve, reject) => {
+      db.get(
+        `SELECT * FROM response_log 
+         WHERE message_id = ? AND channel_id = ?
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [timestamp, channelId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row || null);
         }
       );
     });

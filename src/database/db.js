@@ -94,6 +94,66 @@ if (usePostgres) {
     db.run(`
       CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)
     `);
+
+    // Learning system tables
+    db.run(`
+      CREATE TABLE IF NOT EXISTS response_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        response_id TEXT,
+        user_id TEXT,
+        feedback_type TEXT,
+        feedback_value TEXT,
+        confidence_impact REAL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS learned_patterns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pattern_type TEXT,
+        pattern_key TEXT,
+        pattern_value TEXT,
+        success_rate REAL,
+        usage_count INTEGER DEFAULT 0,
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(pattern_type, pattern_key)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS response_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        response_id TEXT,
+        engagement_score REAL,
+        clarity_score REAL,
+        actionability_score REAL,
+        context_relevance REAL,
+        overall_effectiveness REAL,
+        calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Indexes for learning tables
+    db.run(`
+      CREATE INDEX IF NOT EXISTS idx_feedback_response ON response_feedback(response_id)
+    `);
+
+    db.run(`
+      CREATE INDEX IF NOT EXISTS idx_feedback_type ON response_feedback(feedback_type)
+    `);
+
+    db.run(`
+      CREATE INDEX IF NOT EXISTS idx_patterns_type ON learned_patterns(pattern_type)
+    `);
+
+    db.run(`
+      CREATE INDEX IF NOT EXISTS idx_patterns_success ON learned_patterns(success_rate)
+    `);
+
+    db.run(`
+      CREATE INDEX IF NOT EXISTS idx_metrics_response ON response_metrics(response_id)
+    `);
   });
 }
 

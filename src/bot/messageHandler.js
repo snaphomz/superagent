@@ -11,6 +11,7 @@ import { dailyCheckin } from '../scheduler/dailyCheckin.js';
 import { setScheduleException } from '../scheduler/checkinValidator.js';
 import { pendingQuestions } from '../utils/pendingQuestions.js';
 import { todayIST } from '../utils/dateUtils.js';
+import { feedbackCollector } from '../learning/feedbackCollector.js';
 
 export const messageHandler = {
   async handleMessage(message, client) {
@@ -52,6 +53,10 @@ export const messageHandler = {
 
       await messageStore.saveMessage(message);
       console.log(`Saved message from ${message.user}: ${message.text?.substring(0, 50)}...`);
+
+      // Track feedback from this message (reactions, corrections, follow-ups)
+      await feedbackCollector.trackCorrection(message, client);
+      await feedbackCollector.trackThreadActivity(message, client);
 
       // Detect file/screenshot shares and save context annotation
       if (message.files && message.files.length > 0) {

@@ -7,6 +7,7 @@ import { jibbleMonitor } from '../monitors/jibbleMonitor.js';
 import { strikeEvaluator } from '../scheduler/strikeEvaluator.js';
 import { channelDigest } from '../ai/channelDigest.js';
 import { todayIST } from '../utils/dateUtils.js';
+import { feedbackCollector } from '../learning/feedbackCollector.js';
 
 export function createSlackBot() {
   const app = new App({
@@ -398,6 +399,33 @@ export function createSlackBot() {
       await messageHandler.updateTeamMember(userInfo.user);
     } catch (error) {
       console.error('Error handling team_join:', error);
+    }
+  });
+
+  // Track reactions to bot messages for learning
+  app.event('reaction_added', async ({ event, client }) => {
+    try {
+      await feedbackCollector.trackReaction(event, client);
+    } catch (error) {
+      console.error('Error tracking reaction:', error);
+    }
+  });
+
+  app.event('reaction_removed', async ({ event, client }) => {
+    try {
+      // Track negative feedback when reactions are removed
+      event.reaction = event.reaction;
+      event.item = event.item;
+      // Treat as negative feedback
+      if (event.reaction === 'thumbsup') {
+        await feedbackCollector.trackReaction({
+          ...event,
+          reaction: 'thumbsdown',
+          user: event.user
+        }, client);
+      }
+    } catch (error) {
+      console.error('Error tracking reaction removal:', error);
     }
   });
 

@@ -7,6 +7,7 @@ import { questionGenerator } from './questionGenerator.js';
 import { eodDetector } from '../utils/eodDetector.js';
 import { yesterdayIST } from '../utils/dateUtils.js';
 import db from '../database/postgres.js';
+import { learningEngine } from '../learning/learningEngine.js';
 
 export const responseGenerator = {
   async generateResponse(message, userInfo = null, options = {}) {
@@ -226,7 +227,8 @@ export const responseGenerator = {
   },
 
   async logResponse(messageId, channelId, context, response, confidence, autoSent, sentAt = null) {
-    await messageStore.logResponse({
+    // Log the response
+    const responseLog = await messageStore.logResponse({
       messageId,
       channelId,
       context,
@@ -235,5 +237,12 @@ export const responseGenerator = {
       autoSent,
       sentAt,
     });
+
+    // Trigger learning analysis (async, don't wait)
+    if (responseLog && responseLog.id) {
+      const messageType = contextBuilder.detectMessageType(context.split('\n').pop() || '');
+      learningEngine.analyzeResponse(responseLog.id, response, context, messageType)
+        .catch(error => console.error('Learning analysis failed:', error));
+    }
   },
 };

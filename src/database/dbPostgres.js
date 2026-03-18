@@ -148,6 +148,66 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_checkins_user ON daily_checkins(user_id)
     `);
 
+    // Learning system tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS response_feedback (
+        id SERIAL PRIMARY KEY,
+        response_id TEXT REFERENCES response_log(id),
+        user_id TEXT,
+        feedback_type TEXT,
+        feedback_value TEXT,
+        confidence_impact REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS learned_patterns (
+        id SERIAL PRIMARY KEY,
+        pattern_type TEXT,
+        pattern_key TEXT,
+        pattern_value JSONB,
+        success_rate REAL,
+        usage_count INTEGER DEFAULT 0,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(pattern_type, pattern_key)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS response_metrics (
+        id SERIAL PRIMARY KEY,
+        response_id TEXT REFERENCES response_log(id),
+        engagement_score REAL,
+        clarity_score REAL,
+        actionability_score REAL,
+        context_relevance REAL,
+        overall_effectiveness REAL,
+        calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Indexes for learning tables
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_feedback_response ON response_feedback(response_id)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_feedback_type ON response_feedback(feedback_type)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_patterns_type ON learned_patterns(pattern_type)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_patterns_success ON learned_patterns(success_rate DESC)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_metrics_response ON response_metrics(response_id)
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS obi_team_requests (
         id SERIAL PRIMARY KEY,

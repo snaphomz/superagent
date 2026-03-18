@@ -119,6 +119,12 @@ async function main() {
   hydrationReminder.initialize(client);
   dailySummary.initialize(client);
   strikeEvaluator.initialize(client);
+  
+  // Initialize learning scheduler
+  const { learningScheduler } = await import('./learning/learningScheduler.js');
+  learningScheduler.initialize(client);
+  console.log('✅ Learning scheduler initialized');
+  
   console.log('✅ Schedulers initialized\n');
 
   // Initialize ClickUp monitor if configured

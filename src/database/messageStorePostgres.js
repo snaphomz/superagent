@@ -161,6 +161,7 @@ export const messageStorePostgres = {
       INSERT INTO response_log 
       (message_id, channel_id, context, generated_response, confidence_score, auto_sent, sent_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, created_at
     `;
 
     const values = [
@@ -173,7 +174,8 @@ export const messageStorePostgres = {
       log.sentAt || null,
     ];
 
-    await db.query(query, values);
+    const result = await db.query(query, values);
+    return result.rows[0];
   },
 
   async getResponseLogs(limit = 50) {
@@ -335,5 +337,16 @@ export const messageStorePostgres = {
        ORDER BY created_at DESC`
     );
     return result.rows;
+  },
+
+  async getResponseByTimestamp(timestamp, channelId) {
+    const result = await db.query(
+      `SELECT * FROM response_log 
+       WHERE message_id = $1 AND channel_id = $2
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [timestamp, channelId]
+    );
+    return result.rows[0] || null;
   },
 };
