@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { openai, GPT_MODEL } from '../ai/openaiClient.js';
 import { config } from '../config/slack.js';
 import { promptBuilder } from './promptBuilder.js';
 import { contextBuilder } from '../utils/contextBuilder.js';
@@ -7,11 +7,6 @@ import { questionGenerator } from './questionGenerator.js';
 import { eodDetector } from '../utils/eodDetector.js';
 import { yesterdayIST } from '../utils/dateUtils.js';
 import db from '../database/postgres.js';
-
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-  baseURL: 'https://freeaiapikey.com/v1',
-});
 
 export const responseGenerator = {
   async generateResponse(message, userInfo = null, options = {}) {
