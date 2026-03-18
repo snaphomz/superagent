@@ -29,7 +29,7 @@ const server = http.createServer(async (req, res) => {
         
         // Simple EOD trigger that sends a message to main channel
         const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
-        const targetChannel = process.env.SLACK_TARGET_CHANNEL_ID;
+        const targetChannel = process.env.TARGET_CHANNEL_ID;
         
         if (slackClient && targetChannel) {
           await slackClient.chat.postMessage({
