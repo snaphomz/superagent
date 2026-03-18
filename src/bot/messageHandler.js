@@ -221,6 +221,7 @@ export const messageHandler = {
 
       // Skip Antony's messages unless they're questions in bot threads
       if (message.user === config.target.userId && !isQuestionInThread) {
+        console.log('⏭️  Skipping Antony\'s message (not a question in thread)');
         return;
       }
       
@@ -242,6 +243,8 @@ export const messageHandler = {
         return;
       }
       
+      console.log(`🔍 Checking relevance: isRelevant=${isRelevant}, isEODUpdate=${isEODUpdate}`);
+      
       if (!isRelevant && !isEODUpdate) {
         console.log('Message not relevant for response, skipping...');
         return;
@@ -255,22 +258,27 @@ export const messageHandler = {
       
       console.log('🔄 About to call responseGenerator.generateResponse...');
       
-      let userInfo = null;
+      // Wrap response generation in try-catch to catch any errors
       try {
-        const userInfoResponse = await client.users.info({ user: message.user });
-        userInfo = userInfoResponse.user;
-        console.log(`User: <@${message.user}>`);
-      } catch (error) {
-        console.log('Could not fetch user info:', error.message);
-      }
-      
-      const morningCheckinTs = dailyCheckin.getMorningCheckinTs();
-      const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client, answeredQuestions, morningCheckinTs });
-      
-      const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
-      
-      if (shouldAutoSend) {
-        console.log(`✅ Auto-sending response (confidence: ${result.confidence.toFixed(1)}%)`);
+        let userInfo = null;
+        try {
+          const userInfoResponse = await client.users.info({ user: message.user });
+          userInfo = userInfoResponse.user;
+          console.log(`User: <@${message.user}>`);
+        } catch (error) {
+          console.log('Could not fetch user info:', error.message);
+        }
+        
+        const morningCheckinTs = dailyCheckin.getMorningCheckinTs();
+        console.log('🔄 Calling responseGenerator.generateResponse...');
+        const result = await responseGenerator.generateResponse(message, userInfo, { isLeadDirective, isProgramManager, client, answeredQuestions, morningCheckinTs });
+        
+        console.log(`✅ Response generated: "${result.response?.substring(0, 50)}..." (confidence: ${result.confidence})`);
+        
+        const shouldAutoSend = await responseGenerator.shouldAutoSend(result.confidence);
+        
+        if (shouldAutoSend) {
+          console.log(`✅ Auto-sending response (confidence: ${result.confidence.toFixed(1)}%)`);
         
         await new Promise(resolve => setTimeout(resolve, config.bot.responseDelay * 1000));
         
@@ -409,6 +417,11 @@ export const messageHandler = {
         } catch (dmError) {
           console.error('Error sending DM for review:', dmError);
         }
+      }
+      
+      } catch (responseError) {
+        console.error('❌ Error generating response:', responseError);
+        console.error('Stack trace:', responseError.stack);
       }
     } catch (error) {
       console.error('Error handling message:', error);
